@@ -1,0 +1,76 @@
+<center><b>{malware_name}</b></center> <br>
+<center>{author_name}</center>           <br>
+<center>{malware_source}</center>                   <br>
+<center>{date}</center>           <br>
+
+---
+
+### <u>Malware Samples</u>
+
+[malware_source_link]({malware_source_link})
+<br>
+
+---
+
+### <u>Static Analysis</u>
+##### Malware Info:
+
+| Hashing Algorithm | Value          |
+| ----------------- | -------------- | 
+| md5               | {md5}          |
+| sha1              | {sha1}         |
+| sha256            | {sha256}       |
+| os                | {os}           |
+| format            | {format}       |
+| architecture      | {architecture} |
+| names             | {names}        | 
+
+##### Virus Total
+
+![virus_total]({virus_total_picure})
+
+[vt_full_link]({virus_total_link})
+
+
+###### Strings:
+Note: Links Defanged Using [Cyber Chef](https://gchq.github.io/CyberChef/)
+
+```
+{strings}
+```
+
+
+###### API Calls:
+Malicious API Calls [malapi](https://malapi.io/#)
+ 
+
+
+---
+
+### <u>Dynamic Analysis</u>
+
+
+
+##### Network Indicators:
+
+
+##### Host Indicators:
+
+---
+
+### <u>Binary/Executable Analysis</u>
+
+--- 
+
+
+
+
+
+
+
+
+
+
+
+
+
