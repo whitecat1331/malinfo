@@ -1,6 +1,20 @@
+import sys
+import hashlib
+
 class Info:
     def __init__(self, malware_file):
         self.malware_file = malware_file
+
+        try:
+            self.malware_handle = open(self.malware_file, "rb", buffering=0)
+
+        except FileNotFoundError:
+            sys.stderr.write("File failed to open for Info\n")
+            sys.exit(1)
+
+    def __del__(self):
+        self.malware_handle.close()
+
 
 class HashInfo(Info):
     def __init__(self, malware_file):
