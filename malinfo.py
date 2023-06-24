@@ -9,7 +9,7 @@ class Info:
             self.malware_handle = open(self.malware_file, "rb", buffering=0)
 
         except FileNotFoundError:
-            sys.stderr.write("File failed to open for Info\n")
+            sys.stderr.write("Failed to open file for Info\n")
             sys.exit(1)
 
     def __del__(self):
@@ -19,18 +19,10 @@ class Info:
 class HashInfo(Info):
     def __init__(self, malware_file):
         Info.__init__(self, malware_file)
-        set_md5()
-        set_sha1()
-        set_sha256()
+        self.md5 = hashlib.file_digest(self.malware_handle, 'md5').hexdigest()
+        self.sha1 = hashlib.file_digest(self.malware_handle, 'sha1').hexdigest()
+        self.sha256 = hashlib.file_digest(self.malware_handle, 'sha256').hexdigest()
 
-    def set_md5(self):
-        pass
-
-    def set_sha1(self):
-        pass
-
-    def set_sha256(self):
-        pass
 
 class BinaryInfo(Info):
     def __init__(self, malware_file):
@@ -67,3 +59,8 @@ class MalInfo:
         self.binary_info = BinaryInfo(self.malware_file)
         self.report_info = ReportInfo(self.malware_file)
 
+def test():
+    pass
+
+if __name__ == "__main__":
+    test()
