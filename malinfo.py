@@ -2,9 +2,11 @@ import sys
 import hashlib
 
 
-BLOCKSIZE = 65536
 
 class FileManager:
+
+    BLOCKSIZE = 65536
+
     def __init__(self, malware_file):
         self.malware_file = malware_file
 
@@ -17,8 +19,8 @@ class FileManager:
             sys.exit(1)
         return self
 
-    def read(self, buff_size):
-        return self.malware_handle.read(buff_size)
+    def read(self):
+        return self.malware_handle.read(FileManager.BLOCKSIZE)
 
     def __exit__(self, exc_type, exc_value, exc_traceback):
         self.malware_handle.close()
@@ -33,11 +35,11 @@ class HashInfo:
         with FileManager(malware_file) as file_manager:
             self.all_hashes = [hashlib.md5(), hashlib.sha1(), hashlib.sha256()]
 
-            buf = file_manager.read(BLOCKSIZE)
+            buf = file_manager.read()
             while len(buf) > 0:
                 for hasher in self.all_hashes:
                     hasher.update(buf)
-                buf = file_manager.read(BLOCKSIZE)
+                buf = file_manager.read()
 
             for i in range(len(self.all_hashes)):
                 self.all_hashes[i] = self.all_hashes[i].hexdigest()
