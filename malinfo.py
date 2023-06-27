@@ -3,7 +3,6 @@ import hashlib
 import lief
 
 
-
 class FileManager:
 
     BLOCKSIZE = 65536
@@ -32,10 +31,11 @@ class FileManager:
 
 class HashInfo:
     HASH_ORDER = ["md5", "sha1", "sha256"]
+
     def __init__(self, malware_file):
         # set hashers
+        self.all_hashes = [hashlib.md5(), hashlib.sha1(), hashlib.sha256()]
         with FileManager(malware_file) as file_manager:
-            self.all_hashes = [hashlib.md5(), hashlib.sha1(), hashlib.sha256()]
 
             buf = file_manager.read()
             while len(buf) > 0:
@@ -43,29 +43,49 @@ class HashInfo:
                     hasher.update(buf)
                 buf = file_manager.read()
 
-            for i in range(len(self.all_hashes)):
-                self.all_hashes[i] = self.all_hashes[i].hexdigest()
+        for i in range(len(self.all_hashes)):
+            self.all_hashes[i] = self.all_hashes[i].hexdigest()
+
+        self.to_dict()
+
+    def to_dict(self):
+        self.dict_info = {}
+        for i in range(len(HashInfo.HASH_ORDER)):
+            self.dict_info[HashInfo.HASH_ORDER[i]] = self.all_hashes[i]
 
     def get_info(self):
-            info = ""
-            for i in range(len(self.all_hashes)):
-                info += f"{HashInfo.HASH_ORDER[i]}: {self.all_hashes[i]}\n"
-            return info
-
-
-
-
+        info = ""
+        for i in range(len(self.all_hashes)):
+            info += f"{HashInfo.HASH_ORDER[i]}: {self.all_hashes[i]}\n"
+        return info
 
 
 class BinaryInfo:
     def __init__(self, malware_file):
         self.lief_parsed = lief.parse(malware_file)
-        print(self.lief_parsed)
+        self.header_info = self.lief_parsed.header
+        self.header_attr = [info for info in dir(self.header_info) if not info.startswith(
+            "__") and not callable(getattr(self.header_info, info))]
+        self.to_dict()
+
+    # convert lief object to dictionary using output
+
+    def to_dict(self):
+        self.dict_info = {}
+        # convert to dict
+        for i in range(len(self.header_attr)):
+            self.dict_info[self.header_attr[i]] = getattr(
+                self.header_info, self.header_attr[i])
+        # remove empty information
+        self.dict_info = {key: val for key, val in self.dict_info.items() if not (
+            isinstance(val, set) and len(val) == 0)}
+
+    def __iter__(self):
+        return self.dict_info.items()
 
 
 class ReportInfo:
     def __init__(self, malware_file):
-        Info.__init__(self, malware_file)
         self.set_author_name()
         self.set_date()
 
@@ -75,12 +95,14 @@ class ReportInfo:
     def set_date(self):
         pass
 
+
 class MalInfo:
     def __init__(self, malware_file):
         self.malware_file = malware_file
         self.hash_info = HashInfo(self.malware_file)
         self.binary_info = BinaryInfo(self.malware_file)
         self.report_info = ReportInfo(self.malware_file)
+
 
 def hash_info_test():
     test_file = "test.txt"
@@ -93,16 +115,18 @@ def hash_info_test():
 
     print(hash_info.get_info())
     for i in range(len(all_hashes)):
-        assert(all_hashes[i] == hash_info.all_hashes[i])
+        assert (all_hashes[i] == hash_info.all_hashes[i])
+
 
 def binary_info_test():
     test_bin = "test_c_bin"
     binary_info = BinaryInfo(test_bin)
 
+
 def test_all():
     hash_info_test()
     binary_info_test()
 
-if __name__ == "__main__":
-    hash_info_test()
 
+if __name__ == "__main__":
+    test_all()
