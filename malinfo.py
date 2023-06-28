@@ -2,7 +2,7 @@ from datetime import datetime
 import sys
 import hashlib
 import lief
-import string
+import click
 
 
 class FileManager:
@@ -106,7 +106,27 @@ class MalInfo:
 
 
 class ReportGenerator:
-    pass
+    def __init__(self, malware_file):
+        self.print = click.echo
+        self.input = click.prompt
+        self.malware_file = malware_file
+        hash_info = HashInfo(self.malware_file)
+        binary_info = BinaryInfo(self.malware_file)
+        report_info = self.create_report_info()
+        self.mal_info = MalInfo(hash_info, binary_info, report_info)
+
+    def create_report_info(self):
+        malware_name = self.input(
+            "What is the main name of the malware?\n", type=str)
+        author_name = self.input(
+            "What is the report author's name?\n", type=str)
+        malware_source = self.input(
+            "Where did you get the malware?\n", type=str)
+        malware_link = self.input(
+            "What is the link to access the malware?\n", type=str)
+        report_info = ReportInfo(
+            malware_name, author_name, malware_source, malware_link)
+        return report_info
 
 
 def hash_info_test():
@@ -125,7 +145,7 @@ def hash_info_test():
 
 def binary_info_test():
     test_bin = "test_c_bin"
-    binary_info = BinaryInfo(test_bin)
+    BinaryInfo(test_bin)
 
 
 def test_all():
