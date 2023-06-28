@@ -1,6 +1,8 @@
+from datetime import datetime
 import sys
 import hashlib
 import lief
+import string
 
 
 class FileManager:
@@ -59,6 +61,9 @@ class HashInfo:
             info += f"{HashInfo.HASH_ORDER[i]}: {self.all_hashes[i]}\n"
         return info
 
+    def __iter__(self):
+        return self.dict_info.items()
+
 
 class BinaryInfo:
     def __init__(self, malware_file):
@@ -85,23 +90,23 @@ class BinaryInfo:
 
 
 class ReportInfo:
-    def __init__(self, malware_file):
-        self.set_author_name()
-        self.set_date()
-
-    def set_author_name(self):
-        pass
-
-    def set_date(self):
-        pass
+    def __init__(self, malware_name, author_name, malware_source, malware_link):
+        self.malware_name = malware_name
+        self.author_name = author_name
+        self.malware_source = malware_source
+        self.malware_link = malware_link
+        self.date = datetime.now()
 
 
 class MalInfo:
-    def __init__(self, malware_file):
-        self.malware_file = malware_file
-        self.hash_info = HashInfo(self.malware_file)
-        self.binary_info = BinaryInfo(self.malware_file)
-        self.report_info = ReportInfo(self.malware_file)
+    def __init__(self, hash_info, binary_info, report_info):
+        self.hash_info = hash_info
+        self.binary_info = binary_info
+        self.report_info = report_info
+
+
+class ReportGenerator:
+    pass
 
 
 def hash_info_test():
