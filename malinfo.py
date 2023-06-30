@@ -3,6 +3,8 @@ import sys
 import hashlib
 import lief
 import click
+import vt
+import os
 
 
 class FileManager:
@@ -48,9 +50,9 @@ class HashInfo:
         for i in range(len(self.all_hashes)):
             self.all_hashes[i] = self.all_hashes[i].hexdigest()
 
-        self.to_dict()
+        self.parse_info()
 
-    def to_dict(self):
+    def parse_info(self):
         self.dict_info = {}
         for i in range(len(HashInfo.HASH_ORDER)):
             self.dict_info[HashInfo.HASH_ORDER[i]] = self.all_hashes[i]
@@ -71,11 +73,11 @@ class BinaryInfo:
         self.header_info = self.lief_parsed.header
         self.header_attr = [info for info in dir(self.header_info) if not info.startswith(
             "__") and not callable(getattr(self.header_info, info))]
-        self.to_dict()
+        self.parse_info()
 
     # convert lief object to dictionary using output
 
-    def to_dict(self):
+    def parse_info(self):
         self.dict_info = {}
         # convert to dict
         for i in range(len(self.header_attr)):
@@ -98,6 +100,17 @@ class ReportInfo:
         self.date = datetime.now()
 
 
+class VirusTotalAPI:
+    VT_KEY = "VIRUS_TOTAL_API_KEY"
+
+    def __init__(self, sha256, api_key):
+        self.client = vt.Client(api_key)
+        self.file = self.client.get_object(f"/files/{sha256}")
+
+    def __iter__(self):
+        return self.file.last_analysis_stats
+
+
 class MalInfo:
     def __init__(self, hash_info, binary_info, report_info):
         self.hash_info = hash_info
@@ -112,10 +125,10 @@ class ReportGenerator:
         self.malware_file = malware_file
         hash_info = HashInfo(self.malware_file)
         binary_info = BinaryInfo(self.malware_file)
-        report_info = self.create_report_info()
+        report_info = self.get_report_info()
         self.mal_info = MalInfo(hash_info, binary_info, report_info)
 
-    def create_report_info(self):
+    def get_report_info(self):
         malware_name = self.input(
             "What is the main name of the malware?\n", type=str)
         author_name = self.input(
@@ -127,6 +140,18 @@ class ReportGenerator:
         report_info = ReportInfo(
             malware_name, author_name, malware_source, malware_link)
         return report_info
+
+    def get_vt_key(self):
+        try:
+            vt_key = os.environ[VirusTotalAPI.VT_KEY]
+        except KeyError:
+            vt_key = self.input("Enter Virus Total API Key", type=str)
+            os.environ[VirusTotalAPI.VT_KEY] = vt_key
+        return vt_key
+
+    def generate_report(self):
+        self.print("Generating Report...")
+        pass
 
 
 def hash_info_test():
@@ -145,13 +170,29 @@ def hash_info_test():
 
 def binary_info_test():
     test_bin = "test_c_bin"
-    BinaryInfo(test_bin)
+    binary_info = BinaryInfo(test_bin)
+    print(binary_info)
+    return binary_info
+
+
+def virus_total_api_test():
+    _hash = "0c82e654c09c8fd9fdf4899718efa37670974c9eec5a8fc18a167f93cea6ee83"
+    try:
+        vt_key = os.environ[VirusTotalAPI.VT_KEY]
+    except KeyError:
+        vt_key = click.prompt("Enter Virus Total API Key", type=str)
+        os.environ[VirusTotalAPI.VT_KEY] = vt_key
+
+    vt_api = VirusTotalAPI(_hash, vt_key)
+    print(vt_api)
+    return vt_api
 
 
 def test_all():
     hash_info_test()
     binary_info_test()
+    virus_total_api_test()
 
 
 if __name__ == "__main__":
-    test_all()
+    pass
