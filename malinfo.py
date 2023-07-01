@@ -63,8 +63,11 @@ class HashInfo:
             info += f"{HashInfo.HASH_ORDER[i]}: {self.all_hashes[i]}\n"
         return info
 
+    def to_dict(self):
+        return self.dict_info
+
     def __iter__(self):
-        return self.dict_info.items()
+        return self.dict_info
 
 
 class BinaryInfo:
@@ -87,8 +90,11 @@ class BinaryInfo:
         self.dict_info = {key: val for key, val in self.dict_info.items() if not (
             isinstance(val, set) and len(val) == 0)}
 
+    def to_dict(self):
+        return self.dict_info
+
     def __iter__(self):
-        return self.dict_info.items()
+        return self.dict_info
 
 
 class ReportInfo:
@@ -107,15 +113,19 @@ class VirusTotalAPI:
         self.client = vt.Client(api_key)
         self.file = self.client.get_object(f"/files/{sha256}")
 
+    def to_dict(self):
+        return self.file.last_analysis_stats
+
     def __iter__(self):
         return self.file.last_analysis_stats
 
 
 class MalInfo:
-    def __init__(self, hash_info, binary_info, report_info):
+    def __init__(self, hash_info, binary_info, report_info, vt_info):
         self.hash_info = hash_info
         self.binary_info = binary_info
         self.report_info = report_info
+        self.vt_info = vt_info
 
 
 class ReportGenerator:
@@ -126,7 +136,9 @@ class ReportGenerator:
         hash_info = HashInfo(self.malware_file)
         binary_info = BinaryInfo(self.malware_file)
         report_info = self.get_report_info()
-        self.mal_info = MalInfo(hash_info, binary_info, report_info)
+        vt_info = VirusTotalAPI(
+            hash_info.to_dict()['sha256'], self.get_vt_key())
+        self.mal_info = MalInfo(hash_info, binary_info, report_info, vt_info)
 
     def get_report_info(self):
         malware_name = self.input(
@@ -134,7 +146,7 @@ class ReportGenerator:
         author_name = self.input(
             "What is the report author's name?\n", type=str)
         malware_source = self.input(
-            "Where did you get the malware?\n", type=str)
+            "Where was the malware found?\n", type=str)
         malware_link = self.input(
             "What is the link to access the malware?\n", type=str)
         report_info = ReportInfo(
@@ -148,6 +160,33 @@ class ReportGenerator:
             vt_key = self.input("Enter Virus Total API Key", type=str)
             os.environ[VirusTotalAPI.VT_KEY] = vt_key
         return vt_key
+
+    @staticmethod
+    def format_info_table(info, *headers):
+        info = list(info.items())
+        # top table
+        table = "|"
+        for header in headers:
+            table += f" {header} |"
+        table += "\n"
+        # dashes
+        table += "|"
+        for header in headers:
+            table += " "
+            table += ("-" * len(header))
+            table += " |"
+        table += "\n"
+        # dictionary info
+        for row in range(len(info)):
+
+            if len(info[row]) != len(headers):
+                raise ValueError("Dictionary Info and Header Mismatch")
+
+            table += "|"
+            for col in range(len(info[row])):
+                table += f" {info[row][col]} |"
+            table += "\n"
+        return table
 
     def generate_report(self):
         self.print("Generating Report...")
@@ -166,6 +205,8 @@ def hash_info_test():
     print(hash_info.get_info())
     for i in range(len(all_hashes)):
         assert (all_hashes[i] == hash_info.all_hashes[i])
+
+    return hash_info
 
 
 def binary_info_test():
@@ -186,6 +227,15 @@ def virus_total_api_test():
     vt_api = VirusTotalAPI(_hash, vt_key)
     print(vt_api)
     return vt_api
+
+
+def format_info_table_test():
+    hash_info = hash_info_test()
+    hash_dict = hash_info.to_dict()
+    table = ReportGenerator.format_info_table(
+        hash_dict, "Hashing Algorithm", "Value")
+    print(table)
+    return table
 
 
 def test_all():
