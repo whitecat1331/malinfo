@@ -163,6 +163,10 @@ class ReportGenerator:
 
     @staticmethod
     def format_info_table(info, *headers):
+
+        if not isinstance(info, dict):
+            raise TypeError("info must be a dictionary")
+
         info = list(info.items())
         # top table
         table = "|"
