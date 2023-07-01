@@ -5,6 +5,7 @@ import lief
 import click
 import vt
 import os
+import string
 
 
 class FileManager:
@@ -24,13 +25,37 @@ class FileManager:
         return self
 
     def read(self):
-        return self.malware_handle.read(FileManager.BLOCKSIZE)
+        buf = self.malware_handle.read(FileManager.BLOCKSIZE)
+        while len(buf) > 0:
+            yield buf
+            buf = self.malware_handle.read(FileManager.BLOCKSIZE)
 
     def __exit__(self, exc_type, exc_value, exc_traceback):
         self.malware_handle.close()
 
     def __del__(self):
         self.malware_handle.close()
+
+
+class Strings:
+    def __init__(self, malware_file):
+        self.malware_file = malware_file
+
+    def strings(self, min=4):
+        with open(self.malware_file, errors="ignore") as f:
+            result = ""
+            for c in f.read():
+                if c in string.printable:
+                    result += c
+                    continue
+                if len(result) >= min:
+                    yield result
+                result = ""
+            if len(result) >= min:  # catch result at EOF
+                yield result
+
+    def info(self):
+        return list(self.strings())
 
 
 class HashInfo:
@@ -40,12 +65,9 @@ class HashInfo:
         # set hashers
         self.all_hashes = [hashlib.md5(), hashlib.sha1(), hashlib.sha256()]
         with FileManager(malware_file) as file_manager:
-
-            buf = file_manager.read()
-            while len(buf) > 0:
+            for buf in file_manager.read():
                 for hasher in self.all_hashes:
                     hasher.update(buf)
-                buf = file_manager.read()
 
         for i in range(len(self.all_hashes)):
             self.all_hashes[i] = self.all_hashes[i].hexdigest()
@@ -63,7 +85,7 @@ class HashInfo:
             info += f"{HashInfo.HASH_ORDER[i]}: {self.all_hashes[i]}\n"
         return info
 
-    def to_dict(self):
+    def info(self):
         return self.dict_info
 
     def __iter__(self):
@@ -90,7 +112,7 @@ class BinaryInfo:
         self.dict_info = {key: val for key, val in self.dict_info.items() if not (
             isinstance(val, set) and len(val) == 0)}
 
-    def to_dict(self):
+    def info(self):
         return self.dict_info
 
     def __iter__(self):
@@ -113,7 +135,7 @@ class VirusTotalAPI:
         self.client = vt.Client(api_key)
         self.file = self.client.get_object(f"/files/{sha256}")
 
-    def to_dict(self):
+    def info(self):
         return self.file.last_analysis_stats
 
     def __iter__(self):
@@ -137,7 +159,7 @@ class ReportGenerator:
         binary_info = BinaryInfo(self.malware_file)
         report_info = self.get_report_info()
         vt_info = VirusTotalAPI(
-            hash_info.to_dict()['sha256'], self.get_vt_key())
+            hash_info.info()['sha256'], self.get_vt_key())
         self.mal_info = MalInfo(hash_info, binary_info, report_info, vt_info)
 
     def get_report_info(self):
@@ -216,7 +238,7 @@ def hash_info_test():
 def binary_info_test():
     test_bin = "test_c_bin"
     binary_info = BinaryInfo(test_bin)
-    print(binary_info)
+    print(binary_info.info())
     return binary_info
 
 
@@ -235,11 +257,20 @@ def virus_total_api_test():
 
 def format_info_table_test():
     hash_info = hash_info_test()
-    hash_dict = hash_info.to_dict()
+    hash_dict = hash_info.info()
     table = ReportGenerator.format_info_table(
         hash_dict, "Hashing Algorithm", "Value")
     print(table)
     return table
+
+
+def strings_test():
+    test_bin = "test_c_bin"
+    string_info = Strings(test_bin).info()
+
+    for info in string_info:
+        print(info)
+    return string_info
 
 
 def test_all():
@@ -249,4 +280,4 @@ def test_all():
 
 
 if __name__ == "__main__":
-    pass
+    strings_test()
