@@ -143,11 +143,12 @@ class VirusTotalAPI:
 
 
 class MalInfo:
-    def __init__(self, hash_info, binary_info, report_info, vt_info):
+    def __init__(self, hash_info, binary_info, report_info, vt_info, string_info):
         self.hash_info = hash_info
         self.binary_info = binary_info
         self.report_info = report_info
         self.vt_info = vt_info
+        self.string_info = string_info
 
 
 class ReportGenerator:
@@ -160,7 +161,18 @@ class ReportGenerator:
         report_info = self.get_report_info()
         vt_info = VirusTotalAPI(
             hash_info.info()['sha256'], self.get_vt_key())
-        self.mal_info = MalInfo(hash_info, binary_info, report_info, vt_info)
+        strings = ReportGenerator.extract_strings(
+            self.mal_info.string_info.info())
+        self.mal_info = MalInfo(hash_info, binary_info,
+                                report_info, vt_info, strings)
+
+    @staticmethod
+    def extract_strings(list_of_strings):
+        strings = ""
+        for binary_string in list_of_strings:
+            strings += binary_string
+
+        return strings
 
     def get_report_info(self):
         malware_name = self.input(
@@ -215,7 +227,17 @@ class ReportGenerator:
         return table
 
     def generate_report(self):
-        self.print("Generating Report...")
+        malware_name = self.mal_info.report_info.malware_name
+        author_name = self.mal_info.report_info.author_name
+        malware_source = self.mal_info.report_info.malware_source
+        date = self.mal_info.report_info.date
+        hashes = ReportGenerator.format_info_table(
+            self.mal_info.hash_info.info(), "Hash", "Value")
+        binary_info = ReportGenerator.format_info_table(
+            self.mal_info.binary_info.info(), "Info", "Value")
+        virus_total_info = ReportGenerator.format_info_table(
+            self.mal_info.vt_info.info(), "Info", "Value")
+        strings = self.mal_info.string_info
         pass
 
 
