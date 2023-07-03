@@ -132,8 +132,12 @@ class VirusTotalAPI:
     VT_KEY = "VIRUS_TOTAL_API_KEY"
 
     def __init__(self, sha256, api_key):
-        self.client = vt.Client(api_key)
-        self.file = self.client.get_object(f"/files/{sha256}")
+        try:
+            self.client = vt.Client(api_key)
+            self.file = self.client.get_object(f"/files/{sha256}")
+        except vt.error.APIError:
+            self.file = type('NoFileAnalytics', (), {})()
+            self.file.last_analysis_stats = {}
 
     def info(self):
         return self.file.last_analysis_stats
@@ -141,36 +145,38 @@ class VirusTotalAPI:
     def __iter__(self):
         return self.file.last_analysis_stats
 
+    def __del__(self):
+        self.client.close()
+
 
 class MalInfo:
-    def __init__(self, hash_info, binary_info, report_info, vt_info, string_info):
+    def __init__(self, hash_info, binary_info, vt_info, string_info):
         self.hash_info = hash_info
         self.binary_info = binary_info
-        self.report_info = report_info
         self.vt_info = vt_info
         self.string_info = string_info
 
 
 class ReportGenerator:
+
+    REPORT_TEMPLATE = "report_template.md"
+
     def __init__(self, malware_file):
-        self.print = click.echo
         self.input = click.prompt
+        self.print = click.echo
         self.malware_file = malware_file
         hash_info = HashInfo(self.malware_file)
         binary_info = BinaryInfo(self.malware_file)
-        report_info = self.get_report_info()
         vt_info = VirusTotalAPI(
             hash_info.info()['sha256'], self.get_vt_key())
-        strings = ReportGenerator.extract_strings(
-            self.mal_info.string_info.info())
-        self.mal_info = MalInfo(hash_info, binary_info,
-                                report_info, vt_info, strings)
+        string_info = Strings(self.malware_file)
+        self.mal_info = MalInfo(hash_info, binary_info, vt_info, string_info)
 
     @staticmethod
     def extract_strings(list_of_strings):
         strings = ""
         for binary_string in list_of_strings:
-            strings += binary_string
+            strings += f"{binary_string}\n"
 
         return strings
 
@@ -197,6 +203,9 @@ class ReportGenerator:
 
     @staticmethod
     def format_info_table(info, *headers):
+
+        if not info:
+            return ""
 
         if not isinstance(info, dict):
             raise TypeError("info must be a dictionary")
@@ -226,19 +235,43 @@ class ReportGenerator:
             table += "\n"
         return table
 
-    def generate_report(self):
-        malware_name = self.mal_info.report_info.malware_name
-        author_name = self.mal_info.report_info.author_name
-        malware_source = self.mal_info.report_info.malware_source
-        date = self.mal_info.report_info.date
-        hashes = ReportGenerator.format_info_table(
-            self.mal_info.hash_info.info(), "Hash", "Value")
-        binary_info = ReportGenerator.format_info_table(
-            self.mal_info.binary_info.info(), "Info", "Value")
-        virus_total_info = ReportGenerator.format_info_table(
-            self.mal_info.vt_info.info(), "Info", "Value")
-        strings = self.mal_info.string_info
-        pass
+    def generate_report(self, report_name):
+
+        try:
+            with open(ReportGenerator.REPORT_TEMPLATE) as f:
+                report_info = self.get_report_info()
+                malware_name = report_info.malware_name
+                author_name = report_info.author_name
+                malware_source = report_info.malware_source
+                date = report_info.date
+                malware_source_link = report_info.malware_link
+
+                hashes = ReportGenerator.format_info_table(
+                    self.mal_info.hash_info.info(), "Hash", "Value")
+                binary_info = ReportGenerator.format_info_table(
+                    self.mal_info.binary_info.info(), "Info", "Value")
+                virus_total_info = ReportGenerator.format_info_table(
+                    self.mal_info.vt_info.info(), "Info", "Value")
+
+                strings = ReportGenerator.extract_strings(
+                    self.mal_info.string_info.info())
+
+                report_template = f.read()
+                report = report_template.format(malware_name=malware_name, author_name=author_name,
+                                                malware_source=malware_source,
+                                                malware_source_link=malware_source_link,
+                                                date=date, hashes=hashes, binary_info=binary_info,
+                                                virus_total_info=virus_total_info,
+                                                strings=strings)
+                ReportGenerator.write_report(report_name, report)
+        except FileNotFoundError:
+            sys.stderr.write(f"{ReportGenerator.REPORT_TEMPLATE} not found.")
+            sys.exit(1)
+
+    @staticmethod
+    def write_report(report_name, report):
+        with open(report_name, "w") as f:
+            f.write(report)
 
 
 def hash_info_test():
@@ -295,11 +328,22 @@ def strings_test():
     return string_info
 
 
+def test_report_generator():
+    malware_file = "test_c_bin"
+    report_name = "test_report.md"
+    report_generator = ReportGenerator(malware_file)
+    # report_generator.input = open("input.in").readline
+    report_generator.generate_report(report_name)
+
+
 def test_all():
     hash_info_test()
     binary_info_test()
     virus_total_api_test()
+    format_info_table_test()
+    strings_test()
+    test_report_generator()
 
 
 if __name__ == "__main__":
-    strings_test()
+    test_report_generator()
