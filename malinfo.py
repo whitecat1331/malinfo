@@ -332,7 +332,6 @@ def test_report_generator():
     malware_file = "test_c_bin"
     report_name = "test_report.md"
     report_generator = ReportGenerator(malware_file)
-    # report_generator.input = open("input.in").readline
     report_generator.generate_report(report_name)
 
 
@@ -345,5 +344,13 @@ def test_all():
     test_report_generator()
 
 
+@click.command()
+@click.argument("output_file", type=str)
+@click.argument("malware_file", type=str)
+def generate(output_file, malware_file):
+    report_generator = ReportGenerator(malware_file)
+    report_generator.generate_report(output_file)
+
+
 if __name__ == "__main__":
-    test_report_generator()
+    generate()
