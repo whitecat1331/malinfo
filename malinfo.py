@@ -164,7 +164,8 @@ class MalInfo:
 
 class ReportGenerator:
 
-    REPORT_TEMPLATE = "report_template.md"
+    REPORT_TEMPLATE = os.path.join(os.path.dirname(
+        os.path.realpath(__file__)), "report_template.md")
 
     def __init__(self, malware_file):
         self.input = click.prompt
@@ -269,8 +270,9 @@ class ReportGenerator:
                                                 virus_total_info=virus_total_info,
                                                 strings=strings)
                 ReportGenerator.write_report(report_name, report)
-        except FileNotFoundError:
-            sys.stderr.write(f"{ReportGenerator.REPORT_TEMPLATE} not found.")
+        except FileNotFoundError as e:
+            sys.stderr.write(
+                f"{ReportGenerator.REPORT_TEMPLATE} not found.\n{e}")
             sys.exit(1)
 
     @staticmethod
