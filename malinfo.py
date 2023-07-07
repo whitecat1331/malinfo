@@ -95,10 +95,15 @@ class HashInfo:
 class BinaryInfo:
     def __init__(self, malware_file):
         self.lief_parsed = lief.parse(malware_file)
-        self.header_info = self.lief_parsed.header
-        self.header_attr = [info for info in dir(self.header_info) if not info.startswith(
-            "__") and not callable(getattr(self.header_info, info))]
-        self.parse_info()
+        if self.lief_parsed:
+            self.header_info = self.lief_parsed.header
+            self.header_attr = [info for info in dir(self.header_info) if not info.startswith(
+                "__") and not callable(getattr(self.header_info, info))]
+            self.parse_info()
+        else:
+            self.header_info = []
+            self.header_attr = []
+            self.dict_info = {}
 
     # convert lief object to dictionary using output
 
