@@ -1,4 +1,5 @@
 from datetime import datetime
+from enum import Enum
 import sys
 import hashlib
 import lief
@@ -93,17 +94,28 @@ class HashInfo:
 
 
 class BinaryInfo:
+
+    class OSType(Enum):
+        LINUX = 1  # the best choice
+        MAC = 2
+        WINDOWS = 3
+
     def __init__(self, malware_file):
         self.lief_parsed = lief.parse(malware_file)
         if self.lief_parsed:
             self.header_info = self.lief_parsed.header
             self.header_attr = [info for info in dir(self.header_info) if not info.startswith(
                 "__") and not callable(getattr(self.header_info, info))]
+
+            # set os type
+            self.set_os_type()
+
             self.parse_info()
         else:
             self.header_info = []
             self.header_attr = []
             self.dict_info = {}
+            self.os_type = None
 
     # convert lief object to dictionary using output
 
@@ -116,6 +128,13 @@ class BinaryInfo:
         # remove empty information
         self.dict_info = {key: val for key, val in self.dict_info.items() if not (
             isinstance(val, set) and len(val) == 0)}
+
+    def set_os_type(self):
+        lief_types = [lief.ELF.Binary, lief.PE.Binary, lief.MachO.Binary]
+        os_types = list(BinaryInfo.OSType)
+        for i in range(len(lief_types)):
+            if isinstance(self.lief_parsed, lief_types[i]):
+                self.os_type = os_types[i]
 
     def info(self):
         return self.dict_info
@@ -300,6 +319,7 @@ def hash_info_test():
 def binary_info_test():
     test_bin = "test_c_bin"
     binary_info = BinaryInfo(test_bin)
+    print(binary_info.os_type)
     print(binary_info.info())
     return binary_info
 
@@ -351,6 +371,10 @@ def test_all():
     test_report_generator()
 
 
+def _test():
+    binary_info_test()
+
+
 @click.command()
 @click.argument("output_file", type=str)
 @click.argument("malware_file", type=str)
@@ -360,4 +384,5 @@ def generate(output_file, malware_file):
 
 
 if __name__ == "__main__":
-    generate()
+    _test()
+    # generate()
