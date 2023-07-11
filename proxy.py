@@ -3,13 +3,12 @@ from http.server import BaseHTTPRequestHandler
 import socketserver
 from multiprocessing import Process
 import socket
-import os
 from abc import ABC, abstractmethod
-from pyftpdlib.handlers import FTPHandler, ThrottledDTPHandler
 from pyftpdlib.servers import FTPServer as FTPS
+from pyftpdlib.handlers import FTPHandler
 from pyftpdlib.authorizers import DummyAuthorizer
 import tempfile
-import shutil
+from pydnsserver import DNSServer as DNS
 
 
 class Server(ABC):
@@ -46,7 +45,7 @@ class Server(ABC):
         pass
 
 
-class HTTPServer(Server, BaseHTTPRequestHandler):
+class HTTPServer(Server):
     NAME = "http"
     PORT = 80
     interrupt_read, interrupt_write = socket.socketpair()
@@ -127,11 +126,18 @@ class FTPServer(Server):
             Server.serve_until_interrupt(server)
 
 
-"""
 class DNSServer(Server):
-    pass
+    NAME = "dns"
+    PORT = 53
+
+    def __init__(self, lport=PORT, lhost=Server.ALL_INTERFACES):
+        Server.__init__(self, DNSServer.NAME, lport, lhost)
+
+    def serve(self):
+        raise NotImplementedError
 
 
+"""
 class NFSServer(Server):
     pass
 
@@ -139,6 +145,9 @@ class NFSServer(Server):
 class SMBServer(Server):
     pass
 
+
+class ICMPServer(Server):
+    pass
 """
 
 
