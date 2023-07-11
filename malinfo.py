@@ -173,7 +173,23 @@ class VirusTotalAPI:
         self.client.close()
 
 
+class DynamicAnalysis:
+
+    def __init__(self):
+        pass
+
+    def execute_binary(self):
+        pass
+
+    def monitor_processes(self):
+        pass
+
+    def monitor_network_connections(self):
+        pass
+
+
 class MalInfo:
+
     def __init__(self, hash_info, binary_info, vt_info, string_info):
         self.hash_info = hash_info
         self.binary_info = binary_info
