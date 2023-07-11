@@ -1,17 +1,22 @@
 import click
 from http.server import BaseHTTPRequestHandler
 import socketserver
-import json
-from selectors import DefaultSelector, EVENT_READ
+from multiprocessing import Process
 import socket
+import os
 from abc import ABC, abstractmethod
+from pyftpdlib.handlers import FTPHandler, ThrottledDTPHandler
+from pyftpdlib.servers import FTPServer as FTPS
+from pyftpdlib.authorizers import DummyAuthorizer
+import tempfile
+import shutil
 
 
 class Server(ABC):
 
     ALL_INTERFACES = '0.0.0.0'
 
-    def __init__(self, name, lport, lhost=ALL_INTERFACES, username="anonymous", password="anonymous"):
+    def __init__(self, name, lport, lhost, username="anonymous", password="anonymous"):
         self.lport = lport
         self.lhost = lhost
         self.username = username
@@ -31,17 +36,13 @@ class Server(ABC):
     @staticmethod
     def serve_until_interrupt(daemon):
         try:
-            print("Starting Servers: Use ctrl+c to stop servers.")
+            print("Starting Server")
             daemon.serve_forever()
         except KeyboardInterrupt:
-            click.echo("KeyboardInterrupt: Shutting Servers Down")
+            click.echo("KeyboardInterrupt: Shutting Server Down")
 
     @abstractmethod
     def serve(self):
-        pass
-
-    @abstractmethod
-    def handle(self):
         pass
 
 
@@ -63,7 +64,7 @@ class HTTPServer(Server, BaseHTTPRequestHandler):
             self.send_response(200, b"Welcome")
             self.send_header("Set-Cookie", "foo=bar")
             self.end_headers()
-            self.wfile.write(b"Hello World")
+            self.wfile.write(b"<h1>Default GET malinfo HTTP Response</h1>")
 
             # close connection
 
@@ -86,13 +87,13 @@ class HTTPServer(Server, BaseHTTPRequestHandler):
             self.send_response(200)
             self.send_header("Set-Cookie", "foo=bar")
             self.end_headers()
-            self.wfile.write(json.dumps({'hello': 'world', 'received': 'ok'}))
+            self.wfile.write(b"<h1>Default POST malinfo HTTP Response</h1>")
 
         do_PUT = do_POST
         do_DELETE = do_GET
 
-    def __init__(self, port=PORT):
-        Server.__init__(self, HTTPServer.NAME, port)
+    def __init__(self, lport=PORT, lhost=Server.ALL_INTERFACES):
+        Server.__init__(self, HTTPServer.NAME, lport, lhost)
 
     def serve(self):
         handler = HTTPServer.RequestHandler
@@ -100,30 +101,35 @@ class HTTPServer(Server, BaseHTTPRequestHandler):
         # httpd.handle_request()
         Server.serve_until_interrupt(httpd)
 
-    def handle(self):
-        pass
+
+# Get FTPServer running
+# start all servers in Server static method and kill all servers using ctrl+c
+class FTPServer(Server):
+    NAME = "ftp"
+    PORT = 21
+
+    def __init__(self, lport=PORT, lhost=Server.ALL_INTERFACES):
+        Server.__init__(self, FTPServer.NAME, lport, lhost)
+
+    def serve(self):
+        authorizer = DummyAuthorizer()
+        with tempfile.TemporaryDirectory() as ftptemp:
+
+            authorizer.add_user(self.username, self.password,
+                                ftptemp, perm='elradfmw')
+            handler = FTPHandler
+            handler.authorizer = authorizer
+            handler.banner = "pyftplibd based ftpd ready"
+            address = (self.lhost, self.lport)
+            server = FTPS(address, handler)
+            server.max_cons = 256
+            server.max_cons_per_ip = 5
+            Server.serve_until_interrupt(server)
 
 
 """
-class FTPServer(Server):
-    SERVER_NAME = "ftp"
-
-    def __init__(self, lport, lhost=''):
-        Server.__init__(self, lport, lhost)
-
-    def __enter__(self):
-        Server.start_server(self)
-        authorizer = DummyAuthorizer()
-        authorizer.add_user(self.username, self.password,
-                            os.getcwd(), perm='elradfmw')
-        handler = FTPHandler
-        handler.authorizer = authorizer
-        handler.banner = "pyftplibd based ftpd ready"
-        address = (self.lhost, self.lport)
-        server = FTPS(address, handler)
-        server.max_cons = 256
-        server.max_cons_per_ip = 5
-        Server.serve_until_interrupt(self, server)
+class DNSServer(Server):
+    pass
 
 
 class NFSServer(Server):
@@ -136,8 +142,23 @@ class SMBServer(Server):
 """
 
 
+def start_http_server(port=HTTPServer.PORT):
+    HTTPServer(port).serve()
+
+
+def start_ftp_server(port=FTPServer.PORT):
+    FTPServer(port).serve()
+
+
 def main():
-    HTTPServer().serve()
+    p = Process(target=start_http_server)
+    j = Process(target=start_ftp_server)
+    print("Start")
+    j.start(), p.start()
+    print("stop")
+    input()
+    j.terminate(), p.terminate()
+    print("end")
 
 
 if __name__ == "__main__":
