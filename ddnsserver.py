@@ -124,7 +124,7 @@ class UDPRequestHandler(BaseRequestHandler):
         return self.request[1].sendto(data, self.client_address)
 
 
-def main():
+def main_cli():
     parser = argparse.ArgumentParser(
         description='Start a DNS implemented in Python.')
     parser = argparse.ArgumentParser(
@@ -171,5 +171,36 @@ def main():
             s.shutdown()
 
 
+def start_dns(port=53):
+    print("Starting nameserver...")
+
+    servers = []
+    servers.append(socketserver.ThreadingUDPServer(
+        ('', port), UDPRequestHandler))
+
+    servers.append(socketserver.ThreadingTCPServer(
+        ('', port), TCPRequestHandler))
+
+    for s in servers:
+        # that thread will start one more thread for each request
+        thread = threading.Thread(target=s.serve_forever)
+        thread.daemon = True  # exit the server thread when the main thread terminates
+        thread.start()
+        print("%s server loop running in thread: %s" %
+              (s.RequestHandlerClass.__name__[:3], thread.name))
+
+    try:
+        while 1:
+            time.sleep(1)
+            sys.stderr.flush()
+            sys.stdout.flush()
+
+    except KeyboardInterrupt:
+        pass
+    finally:
+        for s in servers:
+            s.shutdown()
+
+
 if __name__ == '__main__':
-    main()
+    start_dns()

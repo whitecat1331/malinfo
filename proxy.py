@@ -8,7 +8,7 @@ from pyftpdlib.servers import FTPServer as FTPS
 from pyftpdlib.handlers import FTPHandler
 from pyftpdlib.authorizers import DummyAuthorizer
 import tempfile
-from pydnsserver import DNSServer as DNS
+import ddnsserver
 
 
 class Server(ABC):
@@ -134,7 +134,7 @@ class DNSServer(Server):
         Server.__init__(self, DNSServer.NAME, lport, lhost)
 
     def serve(self):
-        raise NotImplementedError
+        ddnsserver.start_dns(self.lport)
 
 
 """
@@ -159,16 +159,24 @@ def start_ftp_server(port=FTPServer.PORT):
     FTPServer(port).serve()
 
 
-def main():
-    p = Process(target=start_http_server)
-    j = Process(target=start_ftp_server)
-    print("Start")
-    j.start(), p.start()
-    print("stop")
-    input()
-    j.terminate(), p.terminate()
-    print("end")
+def start_dns_server(port=DNSServer.PORT):
+    DNSServer(port).serve()
+
+
+def start_servers():
+    start_servers = [start_http_server, start_ftp_server, start_dns_server]
+    processes = []
+    for server_starter in start_servers:
+        processes.append(Process(target=server_starter))
+
+    for process in processes:
+        process.start()
+
+    input("Press enter to continue")
+
+    for process in processes:
+        process.terminate()
 
 
 if __name__ == "__main__":
-    main()
+    start_servers()
