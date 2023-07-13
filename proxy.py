@@ -1,14 +1,17 @@
 import click
-from http.server import BaseHTTPRequestHandler
 import socketserver
-from multiprocessing import Process
 import socket
+import tempfile
+import ddnsserver
+import psutil
+import ICMPack.server
+import netifaces as ni
+from http.server import BaseHTTPRequestHandler
+from multiprocessing import Process
 from abc import ABC, abstractmethod
 from pyftpdlib.servers import FTPServer as FTPS
 from pyftpdlib.handlers import FTPHandler
 from pyftpdlib.authorizers import DummyAuthorizer
-import tempfile
-import ddnsserver
 
 
 class Server(ABC):
@@ -43,6 +46,14 @@ class Server(ABC):
     @abstractmethod
     def serve(self):
         pass
+
+    @staticmethod
+    def get_ip_address(interface):
+        return ni.ifaddresses(interface)[ni.AF_INET][0]['addr']
+
+    @staticmethod
+    def get_interfaces():
+        return list(psutil.net_if_stats().keys())
 
 
 class HTTPServer(Server):
@@ -137,17 +148,30 @@ class DNSServer(Server):
         ddnsserver.start_dns(self.lport)
 
 
+class ICMPServer():
+
+    NAME = "dns"
+    LOOPBACK = Server.get_interfaces()[0]
+
+    def __init__(self, interface=LOOPBACK):
+        self.interface = interface
+        self.lhost = Server.get_ip_address(self.interface)
+
+    # add feature to work on all interfaces
+    def serve(self):
+        ICMPack.server.start_icmp_server(self.interface)
+
+
 """
 class NFSServer(Server):
     pass
 
-
 class SMBServer(Server):
     pass
 
-
-class ICMPServer(Server):
+class SSHServer(Server):
     pass
+
 """
 
 
@@ -163,8 +187,13 @@ def start_dns_server(port=DNSServer.PORT):
     DNSServer(port).serve()
 
 
+def start_icmp_server():
+    ICMPServer().serve()
+
+
 def start_servers():
-    start_servers = [start_http_server, start_ftp_server, start_dns_server]
+    start_servers = [start_http_server, start_ftp_server,
+                     start_dns_server, start_icmp_server]
     processes = []
     for server_starter in start_servers:
         processes.append(Process(target=server_starter))
