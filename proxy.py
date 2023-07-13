@@ -12,6 +12,7 @@ from abc import ABC, abstractmethod
 from pyftpdlib.servers import FTPServer as FTPS
 from pyftpdlib.handlers import FTPHandler
 from pyftpdlib.authorizers import DummyAuthorizer
+from fake_ssh import Server as SSH
 
 
 class Server(ABC):
@@ -149,7 +150,6 @@ class DNSServer(Server):
 
 
 class ICMPServer():
-
     NAME = "dns"
     LOOPBACK = Server.get_interfaces()[0]
 
@@ -162,6 +162,24 @@ class ICMPServer():
         ICMPack.server.start_icmp_server(self.interface)
 
 
+class SSHServer(Server):
+    NAME = "ssh"
+    PORT = 22
+
+    def __init__(self, lport=PORT, lhost=Server.ALL_INTERFACES):
+        Server.__init__(self, SSHServer.NAME, lport, lhost)
+        self.handle = SSH(self.handler, self.lhost, self.lport)
+
+    def handler(self, command):
+        if command.startswith("ls"):
+            return "file1\nfile2\n"
+        elif command.startswith("echo"):
+            return command[4:].strip() + "\n"
+
+    def serve(self):
+        self.handle.run_blocking()
+
+
 """
 class NFSServer(Server):
     pass
@@ -169,8 +187,14 @@ class NFSServer(Server):
 class SMBServer(Server):
     pass
 
+https://pypi.org/project/mock-ssh-server/
 class SSHServer(Server):
     pass
+
+smtps, https, pop3, ident, finger, time, discard, daytime, 
+
+
+
 
 """
 
@@ -191,9 +215,14 @@ def start_icmp_server():
     ICMPServer().serve()
 
 
+def start_ssh_server():
+    SSHServer().serve()
+
+
 def start_servers():
     start_servers = [start_http_server, start_ftp_server,
-                     start_dns_server, start_icmp_server]
+                     start_dns_server, start_icmp_server,
+                     start_ssh_server]
     processes = []
     for server_starter in start_servers:
         processes.append(Process(target=server_starter))
