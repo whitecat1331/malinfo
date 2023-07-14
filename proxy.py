@@ -1,13 +1,12 @@
-import click
 import socketserver
 import socket
 import tempfile
 import ddnsserver
 import psutil
+import ssl
 import ICMPack.server
 import netifaces as ni
-import ssl
-from http.server import BaseHTTPRequestHandler, HTTPServer as HTTPS
+from http.server import BaseHTTPRequestHandler
 from multiprocessing import Process
 from abc import ABC, abstractmethod
 from pyftpdlib.servers import FTPServer as FTPS
@@ -15,6 +14,7 @@ from pyftpdlib.handlers import FTPHandler
 from pyftpdlib.authorizers import DummyAuthorizer
 from fake_ssh import Server as SSH
 from generate_cert import generate_cert
+import nullsmtpd.nullsmtpd
 
 
 class Server(ABC):
@@ -24,19 +24,9 @@ class Server(ABC):
     def __init__(self, name, lport, lhost, username="anonymous", password="anonymous"):
         self.lport = lport
         self.lhost = lhost
+        self.address = (self.lhost, self.lport)
         self.username = username
         self.password = password
-
-    def log_start(self):
-        click.echo(
-            f"Starting {self.__class__.__name__} on {self.lhost}:{self.lport}")
-
-    def log_exit(self):
-        click.echo(
-            f"Closing {self.__class__.__name__} on {self.lhost}:{self.lport}")
-
-    def log_traffic(self):
-        pass
 
     @staticmethod
     def serve_until_interrupt(daemon):
@@ -44,7 +34,7 @@ class Server(ABC):
             print("Starting Server")
             daemon.serve_forever()
         except KeyboardInterrupt:
-            click.echo("KeyboardInterrupt: Shutting Server Down")
+            print("KeyboardInterrupt: Shutting Server Down")
 
     @abstractmethod
     def serve(self):
@@ -125,6 +115,7 @@ class HTTPSServer(Server):
         Server.__init__(self, HTTPSServer.NAME, lport, lhost)
 
     def serve(self):
+        generate_cert()
         context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
         context.load_cert_chain(
             certfile=HTTPSServer.CERT, keyfile=HTTPSServer.KEY)
@@ -155,8 +146,7 @@ class FTPServer(Server):
             handler = FTPHandler
             handler.authorizer = authorizer
             handler.banner = "pyftplibd based ftpd ready"
-            address = (self.lhost, self.lport)
-            server = FTPS(address, handler)
+            server = FTPS(self.address, handler)
             server.max_cons = 256
             server.max_cons_per_ip = 5
             Server.serve_until_interrupt(server)
@@ -204,6 +194,17 @@ class SSHServer(Server):
         self.handle.run_blocking()
 
 
+class SMTPServer(Server):
+    NAME = "smtp"
+    PORT = 25
+
+    def __init__(self, lport=PORT, lhost=Server.ALL_INTERFACES):
+        Server.__init__(self, SMTPServer.NAME, lport, lhost)
+
+    def serve(self):
+        nullsmtpd.nullsmtpd.start_server(self.address)
+
+
 """
 class NFSServer(Server):
     pass
@@ -211,7 +212,7 @@ class NFSServer(Server):
 class SMBServer(Server):
     pass
 
-smtps, https, pop3, ident, finger, time, discard, daytime, 
+smtp, pop3
 
 """
 
@@ -240,10 +241,15 @@ def start_ssh_server():
     SSHServer().serve()
 
 
+def start_smtp_server():
+    SMTPServer().serve()
+
+
 def start_servers():
     start_servers = [start_http_server, start_ftp_server,
                      start_dns_server, start_icmp_server,
-                     start_ssh_server, start_https_server]
+                     start_ssh_server, start_https_server,
+                     start_smtp_server]
     processes = []
     for server_starter in start_servers:
         processes.append(Process(target=server_starter))
@@ -258,4 +264,4 @@ def start_servers():
 
 
 if __name__ == "__main__":
-    start_https_server()
+    start_servers()
