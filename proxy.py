@@ -6,13 +6,15 @@ import ddnsserver
 import psutil
 import ICMPack.server
 import netifaces as ni
-from http.server import BaseHTTPRequestHandler
+import ssl
+from http.server import BaseHTTPRequestHandler, HTTPServer as HTTPS
 from multiprocessing import Process
 from abc import ABC, abstractmethod
 from pyftpdlib.servers import FTPServer as FTPS
 from pyftpdlib.handlers import FTPHandler
 from pyftpdlib.authorizers import DummyAuthorizer
 from fake_ssh import Server as SSH
+from generate_cert import generate_cert
 
 
 class Server(ABC):
@@ -113,8 +115,30 @@ class HTTPServer(Server):
         Server.serve_until_interrupt(httpd)
 
 
+class HTTPSServer(Server):
+    NAME = "https"
+    PORT = 443
+    KEY = "key.pem"
+    CERT = "cert.pem"
+
+    def __init__(self, lport=PORT, lhost=Server.ALL_INTERFACES):
+        Server.__init__(self, HTTPSServer.NAME, lport, lhost)
+
+    def serve(self):
+        context = ssl.SSLContext(ssl.PROTOCOL_TLS_SERVER)
+        context.load_cert_chain(
+            certfile=HTTPSServer.CERT, keyfile=HTTPSServer.KEY)
+        server_address = (self.lhost, self.lport)  # CHANGE THIS IP & PORT
+        handler = HTTPServer.RequestHandler
+        httpd = socketserver.TCPServer(server_address, handler)
+        httpd.socket = context.wrap_socket(httpd.socket, server_side=True)
+        Server.serve_until_interrupt(httpd)
+
+
 # Get FTPServer running
 # start all servers in Server static method and kill all servers using ctrl+c
+
+
 class FTPServer(Server):
     NAME = "ftp"
     PORT = 21
@@ -187,20 +211,17 @@ class NFSServer(Server):
 class SMBServer(Server):
     pass
 
-https://pypi.org/project/mock-ssh-server/
-class SSHServer(Server):
-    pass
-
 smtps, https, pop3, ident, finger, time, discard, daytime, 
-
-
-
 
 """
 
 
 def start_http_server(port=HTTPServer.PORT):
     HTTPServer(port).serve()
+
+
+def start_https_server():
+    HTTPSServer().serve()
 
 
 def start_ftp_server(port=FTPServer.PORT):
@@ -222,7 +243,7 @@ def start_ssh_server():
 def start_servers():
     start_servers = [start_http_server, start_ftp_server,
                      start_dns_server, start_icmp_server,
-                     start_ssh_server]
+                     start_ssh_server, start_https_server]
     processes = []
     for server_starter in start_servers:
         processes.append(Process(target=server_starter))
@@ -237,4 +258,4 @@ def start_servers():
 
 
 if __name__ == "__main__":
-    start_servers()
+    start_https_server()
