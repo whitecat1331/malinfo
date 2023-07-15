@@ -4,7 +4,9 @@ import tempfile
 import ddnsserver
 import psutil
 import ssl
+import pop3_server
 import ICMPack.server
+import nullsmtpd.nullsmtpd
 import netifaces as ni
 from http.server import BaseHTTPRequestHandler
 from multiprocessing import Process
@@ -14,7 +16,6 @@ from pyftpdlib.handlers import FTPHandler
 from pyftpdlib.authorizers import DummyAuthorizer
 from fake_ssh import Server as SSH
 from generate_cert import generate_cert
-import nullsmtpd.nullsmtpd
 
 
 class Server(ABC):
@@ -205,14 +206,24 @@ class SMTPServer(Server):
         nullsmtpd.nullsmtpd.start_server(self.address)
 
 
+class POP3Server(Server):
+    NAME = "pop3"
+    PORT = 110
+    SAMPLE_MESAGE = "sample_message.eml"
+
+    def __init__(self, lport=PORT, lhost=Server.ALL_INTERFACES):
+        Server.__init__(self, POP3Server.NAME, lport, lhost)
+
+    def serve(self):
+        pop3_server.serve(self.lhost, self.lport, POP3Server.SAMPLE_MESAGE)
+
+
 """
 class NFSServer(Server):
     pass
 
 class SMBServer(Server):
     pass
-
-smtp, pop3
 
 """
 
@@ -245,11 +256,15 @@ def start_smtp_server():
     SMTPServer().serve()
 
 
+def start_pop3_server():
+    POP3Server().serve()
+
+
 def start_servers():
     start_servers = [start_http_server, start_ftp_server,
                      start_dns_server, start_icmp_server,
                      start_ssh_server, start_https_server,
-                     start_smtp_server]
+                     start_smtp_server, start_pop3_server]
     processes = []
     for server_starter in start_servers:
         processes.append(Process(target=server_starter))
