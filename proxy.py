@@ -236,8 +236,7 @@ class SMBServer(Server):
 
 
 """
-class NFSServer(Server):
-    pass
+ldap, kerberos, nfs
 """
 
 
