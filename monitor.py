@@ -2,6 +2,7 @@
 import time
 import psutil
 import traceback
+import Proxy.threader
 from multiprocessing import Process, Queue
 from packet_sniffer.core import PacketSniffer
 
@@ -35,7 +36,13 @@ class Monitor:
 
     @staticmethod
     def get_results():
-        yield Monitor.RESULTS.get()
+        while not Monitor.RESULTS.empty():
+            yield Monitor.RESULTS.get()
+
+    @staticmethod
+    def print_results():
+        for result in Monitor.get_results():
+            print(result)
 
 
 class ProcessMonitor:
@@ -60,36 +67,14 @@ class NetworkMonitor:
             yield [frame]
 
 
-MONITORS = [ProcessMonitor, NetworkMonitor]
+MONITORS = Proxy.threader.Threader.get_threads(globals(), "Monitor")
 
 
-def start_monitors(index=None, Monitors=MONITORS):
-    if index:
-        Monitors = [Monitors[index]]
-
-    processes = []
-
-    try:
-        for i in range(len(Monitors)):
-            print(f"Starting {Monitors[i].__name__}")
-            processes.append(Process(target=Monitors[i]().monitor))
-            processes[i].start()
-
-        for i in range(len(Monitors)):
-            print(f"Ending {Monitors[i].__name__}")
-            processes[i].join()
-
-        print(Monitor.RESULTS.get())
-        print()
-        print(Monitor.RESULTS.get())
-
-    except Exception as e:
-        traceback.print_exc(e)
-    finally:
-        for i in range(len(processes)):
-            print(f"Terminating {Monitors[i].__name__}")
-            processes[i].terminate()
+def main():
+    thread = Proxy.threader.Threader("monitor", MONITORS)
+    thread.start()
+    Monitor.print_results()
 
 
 if __name__ == "__main__":
-    start_monitors()
+    main()
