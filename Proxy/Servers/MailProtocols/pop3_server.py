@@ -120,6 +120,8 @@ dispatch = dict(
 
 
 def serve(host, port, filename):
+    module_directory = os.path.dirname(os.path.realpath(__file__))
+    filename = os.path.join(module_directory, filename)
     assert os.path.exists(filename)
     sock = socket.socket(socket.AF_INET, socket.SOCK_STREAM)
     sock.bind((host, port))

@@ -1,23 +1,35 @@
+# library imports
+import inspect
+import sys
 import socketserver
 import socket
 import tempfile
-import ddnsserver
-import psutil
 import ssl
-import pop3_server
 import os
-import smbserver
-import ICMPack.server
-import nullsmtpd.nullsmtpd
+import psutil
+import threader
+
+# package imports
 import netifaces as ni
-from http.server import BaseHTTPRequestHandler
-from multiprocessing import Process
+import Servers.ddnsserver
+import Servers.smbserver
+import Servers.ICMPack.server
+import Servers.MailProtocols.pop3_server
+import Servers.MailProtocols.nullsmtpd.nullsmtpd
+
+# specific imports
 from abc import ABC, abstractmethod
+from Servers.fake_ssh import Server as SSH
+from Servers.generate_cert import generate_cert
 from pyftpdlib.servers import FTPServer as FTPS
 from pyftpdlib.handlers import FTPHandler
 from pyftpdlib.authorizers import DummyAuthorizer
-from fake_ssh import Server as SSH
-from generate_cert import generate_cert
+from http.server import BaseHTTPRequestHandler
+
+
+"""
+ldap, kerberos, nfs
+"""
 
 
 class Server(ABC):
@@ -164,7 +176,7 @@ class DNSServer(Server):
         Server.__init__(self, DNSServer.NAME, lport, lhost)
 
     def serve(self):
-        ddnsserver.start_dns(self.lport)
+        Servers.ddnsserver.start_dns(self.lport)
 
 
 class ICMPServer():
@@ -177,7 +189,7 @@ class ICMPServer():
 
     # add feature to work on all interfaces
     def serve(self):
-        ICMPack.server.start_icmp_server(self.interface)
+        Servers.ICMPack.server.start_icmp_server(self.interface)
 
 
 class SSHServer(Server):
@@ -206,7 +218,7 @@ class SMTPServer(Server):
         Server.__init__(self, SMTPServer.NAME, lport, lhost)
 
     def serve(self):
-        nullsmtpd.nullsmtpd.start_server(self.address)
+        Servers.MailProtocols.nullsmtpd.nullsmtpd.start_server(self.address)
 
 
 class POP3Server(Server):
@@ -218,7 +230,8 @@ class POP3Server(Server):
         Server.__init__(self, POP3Server.NAME, lport, lhost)
 
     def serve(self):
-        pop3_server.serve(self.lhost, self.lport, POP3Server.SAMPLE_MESAGE)
+        Servers.MailProtocols.pop3_server.serve(
+            self.lhost, self.lport, POP3Server.SAMPLE_MESAGE)
 
 
 class SMBServer(Server):
@@ -231,69 +244,17 @@ class SMBServer(Server):
         Server.__init__(self, SMBServer.NAME, lport, lhost)
 
     def serve(self):
-        smbserver.main(shareName=SMBServer.SHARENAME, sharePath=SMBServer.SHAREPATH,
-                       ip=self.lhost, port=self.lport)
+        Servers.smbserver.main(shareName=SMBServer.SHARENAME, sharePath=SMBServer.SHAREPATH,
+                               ip=self.lhost, port=self.lport)
 
 
-"""
-ldap, kerberos, nfs
-"""
+SERVERS = threader.Threader.get_threads(globals(), "Server")
 
 
-def start_http_server(port=HTTPServer.PORT):
-    HTTPServer(port).serve()
-
-
-def start_https_server():
-    HTTPSServer().serve()
-
-
-def start_ftp_server(port=FTPServer.PORT):
-    FTPServer(port).serve()
-
-
-def start_dns_server(port=DNSServer.PORT):
-    DNSServer(port).serve()
-
-
-def start_icmp_server():
-    ICMPServer().serve()
-
-
-def start_ssh_server():
-    SSHServer().serve()
-
-
-def start_smtp_server():
-    SMTPServer().serve()
-
-
-def start_pop3_server():
-    POP3Server().serve()
-
-
-def start_smb_server():
-    SMBServer().serve()
-
-
-def start_servers():
-    start_servers = [start_http_server, start_ftp_server,
-                     start_dns_server, start_icmp_server,
-                     start_ssh_server, start_https_server,
-                     start_smtp_server, start_pop3_server,
-                     start_smb_server]
-    processes = []
-    for server_starter in start_servers:
-        processes.append(Process(target=server_starter))
-
-    for process in processes:
-        process.start()
-
-    input("Press enter to continue")
-
-    for process in processes:
-        process.terminate()
+def main():
+    thread = threader.Threader("serve", SERVERS)
+    thread.start()
 
 
 if __name__ == "__main__":
-    start_servers()
+    main()
