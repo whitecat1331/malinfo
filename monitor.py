@@ -47,6 +47,8 @@ class Monitor():
         for i in range(len(monitor_order)):
             all_results[f"{monitor_order[i].__name__}"] = results[i]
 
+        return all_results
+
     @staticmethod
     def get_all_results():
         results = []
@@ -85,7 +87,7 @@ def main():
     while True:
         thread = Proxy.threader.Threader("monitor", MONITORS)
         thread.start()
-        thread_results = Monitor.to_dict()
+        thread_results = Monitor.to_dict(MONITORS)
         print(thread_results)
         time.sleep(1)
 
