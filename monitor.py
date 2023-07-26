@@ -43,18 +43,9 @@ class Monitor():
     @staticmethod
     def to_dict(monitor_order):
         results = Monitor.get_all_results()
+        all_results = {}
         for i in range(len(monitor_order)):
-            yield {f"{monitor_order[i].__name__}": results[i]}
-
-    @staticmethod
-    def print_results():
-        for result in Monitor.get_results():
-            print(result)
-
-    @staticmethod
-    def print_dict_results(monitor_order):
-        for result in Monitor.to_dict(monitor_order):
-            print(result)
+            all_results[f"{monitor_order[i].__name__}"] = results[i]
 
     @staticmethod
     def get_all_results():
@@ -94,7 +85,8 @@ def main():
     while True:
         thread = Proxy.threader.Threader("monitor", MONITORS)
         thread.start()
-        Monitor.print_dict_results(MONITORS)
+        thread_results = Monitor.to_dict()
+        print(thread_results)
         time.sleep(1)
 
 
