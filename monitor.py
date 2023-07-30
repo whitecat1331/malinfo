@@ -1,5 +1,6 @@
 # Module to keep tract of new processes and connection
 import time
+import json
 import psutil
 import traceback
 import Proxy.threader
@@ -65,15 +66,26 @@ class ProcessMonitor:
     @Monitor
     @staticmethod
     def monitor():
-        yield psutil.pids()
+        for process in psutil.process_iter(list(psutil.Process().as_dict().keys())):
+            # must leave as list to get all items
+            yield process.info.items()
+
+    @staticmethod
+    def parse_info(raw_data):
+        # convert all items in list to a dictionary for further processing
+        raw_data = raw_data[ProcessMonitor.__name__]
+        info = {}
+        for process_info, value in raw_data:
+            info[process_info] = value
+        return info
 
 
 class NetworkMonitor:
     def __init__(self):
         pass
 
-    @Monitor
-    @staticmethod
+    @ Monitor
+    @ staticmethod
     def monitor(interface=None):
         sniffer = PacketSniffer()
         for frame in sniffer.listen(interface):
@@ -88,7 +100,8 @@ def main():
         thread = Proxy.threader.Threader("monitor", MONITORS)
         thread.start()
         thread_results = Monitor.to_dict(MONITORS)
-        print(thread_results)
+        process_info = ProcessMonitor.parse_info(thread_results)
+
         time.sleep(1)
 
 

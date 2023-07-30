@@ -8,14 +8,14 @@ class Threader:
         self.processes = []
         self.main = main
 
-    def start(self, class_name=None):
+    def start(self, class_name=None, *args, **kwargs):
         if class_name:
             self.threads = [class_name]
 
         try:
             for i in range(len(self.threads)):
                 self.processes.append(
-                    Process(target=getattr(self.threads[i](), self.main)))
+                    Process(target=getattr(self.threads[i](*args), self.main)))
                 self.processes[i].start()
 
             for process in self.processes:
