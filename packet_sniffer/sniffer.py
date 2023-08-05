@@ -18,6 +18,12 @@ parser.add_argument(
     action="store_true",
     help="Output packet data during capture."
 )
+parser.add_argument(
+    "-o", "--output",
+    type=str,
+    default=None,
+    help="Redirect output to log file"
+)
 _args = parser.parse_args()
 
 if os.getuid() != 0:
@@ -26,7 +32,8 @@ if os.getuid() != 0:
 
 OutputToScreen(
     subject=(sniffer := PacketSniffer()),
-    display_data=_args.data
+    display_data=_args.data,
+    redirect=_args.output
 )
 
 try:
