@@ -71,12 +71,9 @@ class OutputToScreen(Output):
         for proto in self._frame.protocol_queue:
             try:
                 getattr(self, f"_display_{proto.lower()}_data")()
-                self.info.update({f"_display_{proto.lower()}_data": getattr(self,
-                                                                            f"_display_{proto.lower()}_data")})
 
             except AttributeError:
                 print(f"{'':>4}[+] Unknown Protocol")
-                self.info.update({"Unknown Protocol": "Unknown Protocol"})
 
     def _display_ethernet_data(self) -> None:
         ethernet = self._frame.ethernet
@@ -180,12 +177,12 @@ class OutputToScreen(Output):
 
         self.info.update({
             "TCP": f"{tcp.sport:.>28} -> {tcp.dport: <15}",
-            "Sequence_Number": {tcp.seq},
-            "ACK Number": {tcp.ack},
+            "Sequence_Number": tcp.seq,
+            "ACK_Number": tcp.ack,
             "Flags": f"{tcp.flags_hex_str} > {tcp.flags_str}",
-            "Window_Size": {tcp.window},
-            "Checksum": {tcp.chksum_hex_str},
-            "Urgent_Pointer": {tcp.urg}
+            "Window_Size": tcp.window,
+            "Checksum": tcp.chksum_hex_str,
+            "Urgent_Pointer": tcp.urg
         })
 
     def _display_udp_data(self) -> None:

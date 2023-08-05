@@ -30,7 +30,7 @@ if os.getuid() != 0:
     raise SystemExit("Error: Permission denied. This application requires "
                      "administrator privileges to run.")
 
-OutputToScreen(
+output = OutputToScreen(
     subject=(sniffer := PacketSniffer()),
     display_data=_args.data,
     redirect=_args.output
