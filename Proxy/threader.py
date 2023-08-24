@@ -1,4 +1,5 @@
 import traceback
+import time
 from multiprocessing import Process
 
 
@@ -35,3 +36,29 @@ class Threader:
                 classes.append(obj)
 
         return classes
+
+    @staticmethod
+    def filter_class_attributes(cname):
+        _dir = dir(cname)
+        _dir = [info for info in _dir if not info.startswith(
+            "__") and not callable(getattr(cname, info))]
+        print(_dir)
+        return _dir
+
+    @staticmethod
+    def timer(func, duration, queue):
+        start_time = time.time()
+
+        def wrapper():
+            run_time = 0
+            try:
+                process = Process(target=func, kwargs={"queue": queue})
+                process.start()
+                while run_time < duration:
+                    current_time = time.time()
+                    run_time = current_time - start_time
+                process.terminate()
+            except Exception:
+                traceback.print_exc()
+
+        return wrapper

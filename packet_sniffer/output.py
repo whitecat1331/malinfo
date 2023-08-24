@@ -59,6 +59,7 @@ class OutputToScreen(Output):
         self._display_protocol_info()
         self._display_packet_contents()
         print('\n')
+        return self.info
 
     def _display_output_header(self) -> None:
         local_time = time.strftime("%H:%M:%S", time.localtime())

@@ -1,16 +1,16 @@
 # Module to keep tract of new processes and connection
 import time
-import json
 import psutil
 import traceback
 import Proxy.threader
-from multiprocessing import Process, Queue
+from multiprocessing import Queue
+import packet_sniffer.sniffer
 from packet_sniffer.core import PacketSniffer
-from abc import ABC, abstractmethod
+from packet_sniffer.output import OutputToScreen
 
 
 class Monitor():
-    DURATION = 1
+    DURATION = 5
     RESULTS = Queue()
 
     def __init__(self, func, duration=DURATION):
@@ -58,6 +58,11 @@ class Monitor():
 
         return results
 
+    @staticmethod
+    def timer(func):
+        return Proxy.threader.Threader.timer(func,
+                                             duration=Monitor.DURATION, queue=Monitor.RESULTS)
+
 
 class ProcessMonitor:
     def __init__(self):
@@ -66,43 +71,47 @@ class ProcessMonitor:
     @Monitor
     @staticmethod
     def monitor():
-        for process in psutil.process_iter(list(psutil.Process().as_dict().keys())):
-            # must leave as list to get all items
-            yield process.info.items()
+        procs = [p.info for p in psutil.process_iter(
+            ['pid', 'name', 'ppid', 'cwd', 'cmdline', 'connections', 'create_time', 'terminal', 'username', 'status'])]
+        yield procs
 
-    @staticmethod
+    @ staticmethod
     def parse_info(raw_data):
         # convert all items in list to a dictionary for further processing
         raw_data = raw_data[ProcessMonitor.__name__]
-        info = {}
-        for process_info, value in raw_data:
-            info[process_info] = value
-        return info
+        return raw_data
 
 
 class NetworkMonitor:
+    LOG = "NetworkMonitor.log"
+
     def __init__(self):
         pass
 
-    @ Monitor
+    @staticmethod
+    @Monitor.timer
+    def monitor(**kwargs):
+        packet_sniffer.sniffer.main(kwargs)
+
     @ staticmethod
-    def monitor(interface=None):
-        sniffer = PacketSniffer()
-        for frame in sniffer.listen(interface):
-            yield [frame]
+    def parse_info(raw_data):
+        raw_data = raw_data[NetworkMonitor.__name__]
+        return raw_data
 
 
 MONITORS = Proxy.threader.Threader.get_threads(globals(), "Monitor")
 
 
 def main():
-    while True:
-        thread = Proxy.threader.Threader("monitor", MONITORS)
-        thread.start()
-        thread_results = Monitor.to_dict(MONITORS)
-        process_info = ProcessMonitor.parse_info(thread_results)
-
-        time.sleep(1)
+    threads = Proxy.threader.Threader("monitor", MONITORS)
+    threads.start()
+    thread_results = Monitor.to_dict(MONITORS)
+    process_info = ProcessMonitor.parse_info(thread_results)
+    network_info = NetworkMonitor.parse_info(thread_results)
+    print("\nProcess Info\n")
+    print(process_info)
+    print("\nNetwork Info\n")
+    print(network_info)
 
 
 if __name__ == "__main__":
