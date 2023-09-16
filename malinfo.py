@@ -7,6 +7,7 @@ import click
 import vt
 import os
 import string
+import traceback
 
 
 class FileManager:
@@ -20,9 +21,11 @@ class FileManager:
         try:
             self.malware_handle = open(self.malware_file, "rb", buffering=0)
 
-        except FileNotFoundError:
+        except Exception:
+            print(traceback.format_exc())
             sys.stderr.write("Failed to open file for Info\n")
             sys.exit(1)
+
         return self
 
     def read(self):
@@ -162,6 +165,9 @@ class VirusTotalAPI:
         except vt.error.APIError:
             self.file = type('NoFileAnalytics', (), {})()
             self.file.last_analysis_stats = {}
+
+        except Exception:
+            print(traceback.format_exc())
 
     def info(self):
         return self.file.last_analysis_stats
@@ -400,5 +406,5 @@ def generate(output_file, malware_file):
 
 
 if __name__ == "__main__":
-    _test()
+    test_all()
     # generate()
