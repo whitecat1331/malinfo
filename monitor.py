@@ -44,6 +44,7 @@ class Monitor():
     @staticmethod
     def to_dict(monitor_order):
         results = Monitor.get_all_results()
+        print(results)
         all_results = {}
         for i in range(len(monitor_order)):
             all_results[f"{monitor_order[i].__name__}"] = results[i]
@@ -91,7 +92,8 @@ class NetworkMonitor:
     @staticmethod
     @Monitor.timer
     def monitor(**kwargs):
-        packet_sniffer.sniffer.main(kwargs)
+        packet_sniffer.sniffer.main(
+            Monitor.DURATION - 1, output=NetworkMonitor.LOG)
 
     @ staticmethod
     def parse_info(raw_data):

@@ -1,11 +1,12 @@
 import argparse
 import os
+import time
 
 from packet_sniffer.core import PacketSniffer
 from packet_sniffer.output import OutputToScreen
 
 
-def main(queue=None, **kwargs):
+def main(duration, queue=None, **kwargs):
     parser = argparse.ArgumentParser(description="Network packet sniffer")
     parser.add_argument(
         "-i", "--interface",
@@ -42,6 +43,8 @@ def main(queue=None, **kwargs):
         redirect=_args.output
     )
 
+    start_time = time.time()
+
     try:
         frames = []
         for _ in sniffer.listen(_args.interface):
@@ -49,10 +52,13 @@ def main(queue=None, **kwargs):
             infinite cycle while feeding them to all registered observers 
             for further processing/output'''
             frames.append(output.info)
+            run_time = time.time() - start_time
+            if run_time >= duration:
+                break
 
-    except KeyboardInterrupt:
-        if queue['queue']:
-            queue['queue'].put(frames)
+    finally:
+        if queue:
+            queue.put(frames)
         return frames
 
 

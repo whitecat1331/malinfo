@@ -100,3 +100,6 @@ class PacketSniffer:
         for frame in Decoder(interface).execute():
             self._notify_all(frame)
             yield frame
+
+    def monitor(self, interface: str) -> list:
+        pass
