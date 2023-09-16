@@ -400,11 +400,14 @@ def _test():
 @click.command()
 @click.argument("output_file", type=str)
 @click.argument("malware_file", type=str)
-def generate(output_file, malware_file):
+@click.option("-T", "--test", "test", is_flag=True, show_default=False, default=False, help="Run all tests")
+def generate(output_file, malware_file, test):
+    if test:
+        test_all()
+        sys.exit(0)
     report_generator = ReportGenerator(malware_file)
     report_generator.generate_report(output_file)
 
 
 if __name__ == "__main__":
-    test_all()
-    # generate()
+    generate()
