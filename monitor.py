@@ -1,5 +1,6 @@
 # Module to keep tract of new processes and connection
 import time
+import sys
 import psutil
 import traceback
 import Proxy.threader
@@ -44,10 +45,15 @@ class Monitor():
     @staticmethod
     def to_dict(monitor_order):
         results = Monitor.get_all_results()
-        print(results)
         all_results = {}
-        for i in range(len(monitor_order)):
-            all_results[f"{monitor_order[i].__name__}"] = results[i]
+        for item in results:
+            print("\nResult:\n", item)
+        sys.exit()
+        try:
+            for i in range(len(monitor_order)):
+                all_results[f"{monitor_order[i].__name__}"] = results[i]
+        except:
+            traceback.print_exc()
 
         return all_results
 
@@ -84,16 +90,21 @@ class ProcessMonitor:
 
 
 class NetworkMonitor:
-    LOG = "NetworkMonitor.log"
 
     def __init__(self):
         pass
 
     @staticmethod
     @Monitor.timer
-    def monitor(**kwargs):
-        packet_sniffer.sniffer.main(
-            Monitor.DURATION - 1, output=NetworkMonitor.LOG)
+    def monitor(*args):
+        results = packet_sniffer.sniffer.main(
+            Monitor.DURATION - 1)
+        args[0].put(results)
+        return results
+
+
+
+
 
     @ staticmethod
     def parse_info(raw_data):

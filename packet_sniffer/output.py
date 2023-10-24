@@ -33,19 +33,9 @@ class OutputToScreen(Output):
         """
         super().__init__(subject)
 
-        if redirect:
-            global print
-            global stream
-            stream = open(redirect, "w")
-            print = stream.write
-
         self._frame = None
         self._display_data = display_data
         self._initialize()
-
-    def __del__(self):
-        global stream
-        stream.close()
 
     @staticmethod
     def _initialize() -> None:

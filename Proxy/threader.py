@@ -52,7 +52,7 @@ class Threader:
         def wrapper():
             run_time = 0
             try:
-                process = Process(target=func, kwargs={"queue": queue})
+                process = Process(target=func, args=(queue,))
                 process.start()
                 while run_time < duration:
                     current_time = time.time()
