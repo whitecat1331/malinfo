@@ -1,6 +1,12 @@
 import time
 import psutil
+import packet_sniffer.sniffer
+import filewatch
 from icecream import ic
+
+
+DURATION = 5
+DEPTH_LIMIT = 0
 
 def process_monitor(duration):
     start_time = time.time() 
@@ -19,10 +25,22 @@ def process_monitor(duration):
 
     return processes
 
+def network_monitor(duration):
+    network_packets = packet_sniffer.sniffer.main(duration)
+    return network_packets
+
+def filesystem_monitor(duration):
+    return filewatch.main()
+
+
 
 def main(duration):
     process_results = process_monitor(duration)
+    network_results = network_monitor(duration)
+    file_results = filesystem_monitor(duration)
     ic(process_results)
+    ic(network_results)
+    ic(file_results)
 
 DURATION = 5
 

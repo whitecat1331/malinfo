@@ -2,11 +2,17 @@ import argparse
 import os
 import time
 
-from packet_sniffer.core import PacketSniffer
-from packet_sniffer.output import OutputToScreen
+if not __name__ == "__main__":
+    from packet_sniffer.core import PacketSniffer
+    from packet_sniffer.output import OutputToScreen
+else:
+    from core import PacketSniffer
+    from output import OutputToScreen
+
+DURATION = 5
 
 
-def main(duration, queue=None, **kwargs):
+def main(duration=DURATION, queue=None, **kwargs):
     parser = argparse.ArgumentParser(description="Network packet sniffer")
     parser.add_argument(
         "-i", "--interface",
