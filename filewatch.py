@@ -62,7 +62,7 @@ def main(duration=DURATION, depth_limit=DEPTH_LIMIT):
         my_observer.stop()
         my_observer.join()
 
-    return list(network_packets.queue)
+    return set(network_packets.queue)
 
 if __name__ == "__main__":
     main()
