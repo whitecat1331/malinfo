@@ -2,6 +2,7 @@ import time
 import psutil
 import packet_sniffer.sniffer
 import filewatch
+from concurrent.futures import ProcessPoolExecutor
 from icecream import ic
 
 
@@ -23,26 +24,35 @@ def process_monitor(duration):
 
         run_time = time.time() - start_time
 
-    return processes
+    return {"process_monitor": processes}
 
 def network_monitor(duration):
     network_packets = packet_sniffer.sniffer.main(duration)
-    return network_packets
+    return {"network_monitor": network_packets}
 
 def filesystem_monitor(duration):
-    return filewatch.main()
+    return {"filesystem_monitor": filewatch.main()}
 
-
-
-def main(duration):
-    process_results = process_monitor(duration)
-    network_results = network_monitor(duration)
-    file_results = filesystem_monitor(duration)
-    ic(process_results)
-    ic(network_results)
-    ic(file_results)
-
+MONITORS = [process_monitor, network_monitor, filesystem_monitor]
 DURATION = 5
 
+
+def main(duration=DURATION):
+    process_pool_executor = ProcessPoolExecutor()
+    processes = []
+    for monitor in MONITORS:
+        running_process = process_pool_executor.submit(monitor, duration)
+        processes.append(running_process)
+
+    all_monitor_results = {}
+    for running_process in processes:
+        all_monitor_results.update(running_process.result())
+
+
+    ic(all_monitor_results)
+    return all_monitor_results
+
+
+
 if __name__ == "__main__":
-    main(DURATION)
+    main()
