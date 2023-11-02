@@ -45,7 +45,8 @@ def main(duration=DURATION, queue=None, **kwargs):
 
     output = OutputToScreen(
         subject=(sniffer := PacketSniffer()),
-        display_data=_args.data
+        display_data=_args.data,
+        redirect=True
     )
 
     start_time = time.time()

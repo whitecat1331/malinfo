@@ -6,6 +6,8 @@ __author__ = "EONRaider @ keybase.io/eonraider"
 import time
 from abc import ABC, abstractmethod
 
+REDIRECTION = "network_traffic.log"
+
 
 class Output(ABC):
     """Interface for the implementation of all classes responsible for
@@ -24,7 +26,7 @@ i = " " * 4  # Basic indentation level
 
 
 class OutputToScreen(Output):
-    def __init__(self, subject, *, display_data: bool, redirect=None):
+    def __init__(self, subject, *, display_data: bool, redirect=False):
         """Output data from a decoded frame to screen.
 
         :param subject: Instance of PacketSniffer to be observed.
@@ -32,6 +34,10 @@ class OutputToScreen(Output):
             data.
         """
         super().__init__(subject)
+
+        if redirect:
+            global print 
+            print  = open(REDIRECTION, "w").write
 
         self._frame = None
         self._display_data = display_data
