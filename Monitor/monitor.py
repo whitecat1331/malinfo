@@ -49,7 +49,6 @@ def main(duration=DURATION):
         all_monitor_results.update(running_process.result())
 
 
-    ic(all_monitor_results)
     return all_monitor_results
 
 
