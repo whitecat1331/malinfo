@@ -1,5 +1,4 @@
-from datetime import datetime
-from enum import Enum
+import Monitor.monitor
 import sys
 import hashlib
 import lief
@@ -8,6 +7,9 @@ import vt
 import os
 import string
 import traceback
+from icecream import ic
+from datetime import datetime
+from enum import Enum
 
 
 class FileManager:
@@ -178,6 +180,23 @@ class VirusTotalAPI:
     def __del__(self):
         self.client.close()
 
+class MonitorParser:
+    DURATION = 5 # seconds
+
+    def __init__(self, duration=DURATION):
+        self.monitor_info = Monitor.monitor.main(duration)
+
+    def parse_processes(self):
+        return ic(self.monitor_info["process_monitor"])
+
+    def parse_network_packets(self):
+        return ic(self.monitor_info["network_monitor"])
+
+    def parse_changed_files(self):
+        return ic(self.monitor_info["filesystem_monitor"])
+
+
+
 
 class DynamicAnalysis:
 
@@ -187,10 +206,10 @@ class DynamicAnalysis:
     def execute_binary(self):
         pass
 
-    def monitor_processes(self):
+    def monitor(self):
         pass
 
-    def monitor_network_connections(self):
+    def format_results(self):
         pass
 
 
@@ -377,11 +396,18 @@ def strings_test():
     return string_info
 
 
-def test_report_generator():
+def report_generator_test():
     malware_file = "test_c_bin"
     report_name = "test_report.md"
     report_generator = ReportGenerator(malware_file)
     report_generator.generate_report(report_name)
+
+def monitor_parser_test():
+    monitor_parser = MonitorParser()
+    monitor_parser.parse_processes()
+    monitor_parser.parse_network_packets()
+    monitor_parser.parse_changed_files()
+    sys.exit()
 
 
 def test_all():
@@ -390,7 +416,7 @@ def test_all():
     virus_total_api_test()
     format_info_table_test()
     strings_test()
-    test_report_generator()
+    report_generator_test()
 
 
 def _test():
@@ -400,11 +426,8 @@ def _test():
 @click.command()
 @click.argument("output_file", type=str)
 @click.argument("malware_file", type=str)
-@click.option("-T", "--test", "test", is_flag=True, show_default=False, default=False, help="Run all tests")
-def generate(output_file, malware_file, test):
-    if test:
-        test_all()
-        sys.exit(0)
+def generate(output_file, malware_file):
+    monitor_parser_test()
     report_generator = ReportGenerator(malware_file)
     report_generator.generate_report(output_file)
 
