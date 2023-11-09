@@ -184,25 +184,33 @@ class VirusTotalAPI:
 class MonitorParser:
     DURATION = 5 # seconds
 
-    def __init__(self, duration=DURATION):
+    def __init__(self, duration=DURATION, detonation_time=time.time()):
+        self.detonation_time = detonation_time
         self.monitor_info = Monitor.monitor.main(duration)
 
-    def parse_processes(self, detonation_time):
+    def parse_processes(self):
         raw_processes = self.monitor_info["process_monitor"]
         parsed_processes = []
-        ic(f"The detonation time is {detonation_time}")
         for process in raw_processes:
-            ic(f"{process['create_time']}")
-            if process["create_time"] > detonation_time:
-                ic(f"Process create time {process['create_time']}")
+            if process["create_time"] > self.detonation_time:
                 parsed_processes.append(process)
-        return ic(parsed_processes)
+        return parsed_processes
 
     def parse_network_packets(self):
-        return ic(self.monitor_info["network_monitor"])
+        raw_packets = self.monitor_info["network_monitor"]
+        parsed_packets = []
+        for packet in raw_packets:
+            if packet["Epoch_Time"] > self.detonation_time:
+                parsed_packets.append(packet)
+        return parsed_packets
 
     def parse_changed_files(self):
-        return ic(self.monitor_info["filesystem_monitor"])
+        raw_file_changes = self.monitor_info["filesystem_monitor"]
+        parsed_file_changes = []
+        for file_change in raw_file_changes:
+            if file_change["time"] > self.detonation_time:
+                parsed_file_changes.append(file_change)
+        return parsed_file_changes
 
 
 
@@ -214,7 +222,6 @@ class DynamicAnalysis:
         self.monitor()
 
     def execute_binary(self):
-        detonation_time = time.time()
         pass
 
     def monitor(self):
@@ -420,12 +427,11 @@ def report_generator_test():
     report_generator.generate_report(report_name)
 
 def monitor_parser_test():
-    start_time = time.time()
     monitor_parser = MonitorParser()
-    monitor_parser.parse_processes(start_time)
-    sys.exit()
+    monitor_parser.parse_processes()
     monitor_parser.parse_network_packets()
-    monitor_parser.parse_changed_files()
+    ic(monitor_parser.parse_changed_files())
+    sys.exit()
 
 
 def test_all():

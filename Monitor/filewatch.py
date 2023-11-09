@@ -12,16 +12,17 @@ DURATION = 5
 DEPTH_LIMIT = 0
 
 def on_created(event):
-    network_packets.put(f"{event.src_path} has been created.")
+    network_packets.put({"source": event.src_path, "status": "created", "time": time.time()})
 
 def on_deleted(event):
-    network_packets.put(f"{event.src_path} was deleted")
+    network_packets.put({"source": event.src_path, "status": "deleted", "time": time.time()})
 
 def on_modified(event):
-    network_packets.put(f"{event.src_path} has been modified")
+    network_packets.put({"source": event.src_path, "status": "modified", "time": time.time()})
 
 def on_moved(event):
-    network_packets.put(f"{event.src_path} moved to {event.dest_path}")
+    network_packets.put({"source": event.src_path, "destination": event.dest_path, 
+                        "status": "moved", "time": time.time()})
 
 def main(duration=DURATION, depth_limit=DEPTH_LIMIT):
     patterns = ["*"]
@@ -40,10 +41,10 @@ def main(duration=DURATION, depth_limit=DEPTH_LIMIT):
     path = os.path.abspath(os.sep)
     path = os.path.normpath(path)
     directories = []
+    # work around for inotify filewatch limit
     for root,dirs,files in os.walk(path, topdown=True):
         depth = root[len(path) + len(os.path.sep):].count(os.path.sep)
         if depth == depth_limit:
-            # We're currently two directories in, so all subdirs have depth 3
             directories += [os.path.join(root, d) for d in dirs]
             dirs[:] = [] # Don't recurse any deeper
 
@@ -62,7 +63,7 @@ def main(duration=DURATION, depth_limit=DEPTH_LIMIT):
         my_observer.stop()
         my_observer.join()
 
-    return set(network_packets.queue)
+    return list(network_packets.queue)
 
 if __name__ == "__main__":
     main()
