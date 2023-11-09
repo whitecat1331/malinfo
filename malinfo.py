@@ -7,6 +7,7 @@ import vt
 import os
 import string
 import traceback
+import time
 from icecream import ic
 from datetime import datetime
 from enum import Enum
@@ -186,8 +187,16 @@ class MonitorParser:
     def __init__(self, duration=DURATION):
         self.monitor_info = Monitor.monitor.main(duration)
 
-    def parse_processes(self):
-        return ic(self.monitor_info["process_monitor"])
+    def parse_processes(self, detonation_time):
+        raw_processes = self.monitor_info["process_monitor"]
+        parsed_processes = []
+        ic(f"The detonation time is {detonation_time}")
+        for process in raw_processes:
+            ic(f"{process['create_time']}")
+            if process["create_time"] > detonation_time:
+                ic(f"Process create time {process['create_time']}")
+                parsed_processes.append(process)
+        return ic(parsed_processes)
 
     def parse_network_packets(self):
         return ic(self.monitor_info["network_monitor"])
@@ -201,15 +210,23 @@ class MonitorParser:
 class DynamicAnalysis:
 
     def __init__(self):
-        pass
+        self.execute_binary()
+        self.monitor()
 
     def execute_binary(self):
+        detonation_time = time.time()
         pass
 
     def monitor(self):
+        self.monitor_parser = MonitorParser()
+
+    def processes_info(self):
         pass
 
-    def format_results(self):
+    def netowork_packet_info(self):
+        pass
+
+    def changed_files_info(self):
         pass
 
 
@@ -403,11 +420,12 @@ def report_generator_test():
     report_generator.generate_report(report_name)
 
 def monitor_parser_test():
+    start_time = time.time()
     monitor_parser = MonitorParser()
-    monitor_parser.parse_processes()
+    monitor_parser.parse_processes(start_time)
+    sys.exit()
     monitor_parser.parse_network_packets()
     monitor_parser.parse_changed_files()
-    sys.exit()
 
 
 def test_all():
