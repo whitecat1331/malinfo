@@ -1,13 +1,12 @@
 import time
 import psutil
 from concurrent.futures import ProcessPoolExecutor
+from scapy.all import sniff
 from icecream import ic
 
 if __name__ == "__main__":
-    import packet_sniffer.sniffer as sniffer
     import filewatch
 else:
-    import Monitor.packet_sniffer.sniffer as sniffer
     import Monitor.filewatch as filewatch
 
 DURATION = 5
@@ -31,7 +30,7 @@ def process_monitor(duration):
     return {"process_monitor": processes}
 
 def network_monitor(duration):
-    network_packets = sniffer.main(duration)
+    network_packets = sniff(timeout=duration)
     return {"network_monitor": network_packets}
 
 def filesystem_monitor(duration):

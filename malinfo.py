@@ -8,8 +8,10 @@ import os
 import string
 import traceback
 import time
+import json
 from icecream import ic
 from datetime import datetime
+from scapy.all import wrpcap
 from enum import Enum
 
 
@@ -183,24 +185,43 @@ class VirusTotalAPI:
 
 class MonitorParser:
     DURATION = 5 # seconds
+    LOGNAME = "Logs"
 
     def __init__(self, duration=DURATION, detonation_time=time.time()):
         self.detonation_time = detonation_time
+
+        if not os.path.exists(MonitorParser.LOGNAME):
+            os.makedirs(MonitorParser.LOGNAME)
+
         self.monitor_info = Monitor.monitor.main(duration)
 
-    def parse_processes(self):
-        raw_processes = self.monitor_info["process_monitor"]
-        parsed_processes = []
+    def parse_processes(self, monitor_name="process_monitor"):
+        raw_processes = self.monitor_info[monitor_name]
+
+        delayed_processes = []
         for process in raw_processes:
             if process["create_time"] > self.detonation_time:
-                parsed_processes.append(process)
+                delayed_processes.append(process)
+
+        logfile = os.path.join(MonitorParser.LOGNAME, f"{monitor_name}.log")
+        with open(logfile, 'w') as f:
+            json.dump(delayed_processes, f)
+
+        parsed_processes = []
+        for parsed_process in delayed_processes:
+            parsed_processes.append(parsed_process["name"])
+
+        parsed_processes = set(parsed_processes)
+
         return parsed_processes
 
-    def parse_network_packets(self):
-        raw_packets = self.monitor_info["network_monitor"]
+    def parse_network_packets(self, monitor_name="network_monitor"):
+        raw_packets = self.monitor_info[monitor_name]
+        logfile = os.path.join(MonitorParser.LOGNAME, f"{monitor_name}.pcap")
+        wrpcap(logfile, raw_packets)
         parsed_packets = []
         for packet in raw_packets:
-            if packet["Epoch_Time"] > self.detonation_time:
+            if packet.time > self.detonation_time:
                 parsed_packets.append(packet)
         return parsed_packets
 
@@ -230,7 +251,7 @@ class DynamicAnalysis:
     def processes_info(self):
         pass
 
-    def netowork_packet_info(self):
+    def network_packet_info(self):
         pass
 
     def changed_files_info(self):
@@ -428,10 +449,10 @@ def report_generator_test():
 
 def monitor_parser_test():
     monitor_parser = MonitorParser()
-    monitor_parser.parse_processes()
-    monitor_parser.parse_network_packets()
-    ic(monitor_parser.parse_changed_files())
+    ic(monitor_parser.parse_processes())
     sys.exit()
+    ic(monitor_parser.parse_network_packets())
+    ic(monitor_parser.parse_changed_files())
 
 
 def test_all():
