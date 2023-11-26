@@ -161,4 +161,4 @@ cython_debug/
 #.idea/
 
 .swp
-packet_smiffer/network_traffic.log
+Logs/
