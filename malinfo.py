@@ -11,7 +11,7 @@ import time
 import json
 from icecream import ic
 from datetime import datetime
-from scapy.all import wrpcap
+from scapy.all import *
 from enum import Enum
 
 
@@ -197,40 +197,45 @@ class MonitorParser:
 
     def parse_processes(self, monitor_name="process_monitor"):
         raw_processes = self.monitor_info[monitor_name]
-
         delayed_processes = []
         for process in raw_processes:
             if process["create_time"] > self.detonation_time:
                 delayed_processes.append(process)
-
-        logfile = os.path.join(MonitorParser.LOGNAME, f"{monitor_name}.log")
+        logfile = os.path.join(MonitorParser.LOGNAME, f"{monitor_name}.json")
         with open(logfile, 'w') as f:
             json.dump(delayed_processes, f)
-
         parsed_processes = []
         for parsed_process in delayed_processes:
             parsed_processes.append(parsed_process["name"])
-
         parsed_processes = set(parsed_processes)
-
         return parsed_processes
 
     def parse_network_packets(self, monitor_name="network_monitor"):
         raw_packets = self.monitor_info[monitor_name]
         logfile = os.path.join(MonitorParser.LOGNAME, f"{monitor_name}.pcap")
         wrpcap(logfile, raw_packets)
-        parsed_packets = []
-        for packet in raw_packets:
+        delayed_packets = []
+        for packet in raw_packets[DNSQR]:
             if packet.time > self.detonation_time:
-                parsed_packets.append(packet)
-        return parsed_packets
+                delayed_packets.append(packet)
 
-    def parse_changed_files(self):
+        # filter packets by suspicious dns query
+        query_names = set()
+        for packet in delayed_packets:
+            query_names.add(packet[DNSQR].qname.decode('utf-8'))
+
+
+        return query_names
+
+    def parse_changed_files(self, monitor_name="changed_files"):
         raw_file_changes = self.monitor_info["filesystem_monitor"]
-        parsed_file_changes = []
+        logfile = os.path.join(MonitorParser.LOGNAME, f"{monitor_name}.json")
+        with open(logfile, 'w') as f:
+            json.dump(raw_file_changes, f)
+        parsed_file_changes = set()
         for file_change in raw_file_changes:
             if file_change["time"] > self.detonation_time:
-                parsed_file_changes.append(file_change)
+                parsed_file_changes.add(file_change['source'])
         return parsed_file_changes
 
 
@@ -450,9 +455,9 @@ def report_generator_test():
 def monitor_parser_test():
     monitor_parser = MonitorParser()
     ic(monitor_parser.parse_processes())
-    sys.exit()
     ic(monitor_parser.parse_network_packets())
     ic(monitor_parser.parse_changed_files())
+    sys.exit()
 
 
 def test_all():

@@ -40,12 +40,22 @@ Note: Links Defanged Using [Cyber Chef](https://gchq.github.io/CyberChef/)
 
 ### <u>Dynamic Analysis</u>
 
+##### Process Indicators:
+
+```
+{process_indicators}
+```
+
 ##### Network Indicators:
 
-##### Host Indicators:
+```
+{network_indicators}
+```
+
+##### File Indicators
+
+```
+{file_indicators}
+```
 
 ---
-
-### <u>Binary/Executable Analysis</u>
-
---- 
