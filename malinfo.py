@@ -13,6 +13,7 @@ from icecream import ic
 from datetime import datetime
 from scapy.all import *
 from enum import Enum
+import traceback
 
 
 class FileManager:
@@ -45,201 +46,149 @@ class FileManager:
     def __del__(self):
         self.malware_handle.close()
 
-
-class Strings:
-    def __init__(self, malware_file):
-        self.malware_file = malware_file
-
-    def strings(self, min=4):
-        with open(self.malware_file, errors="ignore") as f:
-            result = ""
-            for c in f.read():
-                if c in string.printable:
-                    result += c
-                    continue
-                if len(result) >= min:
-                    yield result
-                result = ""
-            if len(result) >= min:  # catch result at EOF
-                yield result
-
-    def info(self):
-        return list(self.strings())
-
-
-class HashInfo:
-    HASH_ORDER = ["md5", "sha1", "sha256"]
-
-    def __init__(self, malware_file):
-        # set hashers
-        self.all_hashes = [hashlib.md5(), hashlib.sha1(), hashlib.sha256()]
-        with FileManager(malware_file) as file_manager:
-            for buf in file_manager.read():
-                for hasher in self.all_hashes:
-                    hasher.update(buf)
-
-        for i in range(len(self.all_hashes)):
-            self.all_hashes[i] = self.all_hashes[i].hexdigest()
-
-        self.parse_info()
-
-    def parse_info(self):
-        self.dict_info = {}
-        for i in range(len(HashInfo.HASH_ORDER)):
-            self.dict_info[HashInfo.HASH_ORDER[i]] = self.all_hashes[i]
-
-    def get_info(self):
-        info = ""
-        for i in range(len(self.all_hashes)):
-            info += f"{HashInfo.HASH_ORDER[i]}: {self.all_hashes[i]}\n"
-        return info
-
-    def info(self):
-        return self.dict_info
-
-    def __iter__(self):
-        return self.dict_info
-
-
-class BinaryInfo:
-
-    class OSType(Enum):
-        LINUX = 1  # the best choice
-        MAC = 2
-        WINDOWS = 3
-
-    def __init__(self, malware_file):
-        self.lief_parsed = lief.parse(malware_file)
-        if self.lief_parsed:
-            self.header_info = self.lief_parsed.header
-            self.header_attr = [info for info in dir(self.header_info) if not info.startswith(
-                "__") and not callable(getattr(self.header_info, info))]
-
-            # set os type
-            self.set_os_type()
-
-            self.parse_info()
-        else:
-            self.header_info = []
-            self.header_attr = []
-            self.dict_info = {}
-            self.os_type = None
-
-    # convert lief object to dictionary using output
-
-    def parse_info(self):
-        self.dict_info = {}
-        # convert to dict
-        for i in range(len(self.header_attr)):
-            self.dict_info[self.header_attr[i]] = getattr(
-                self.header_info, self.header_attr[i])
-        # remove empty information
-        self.dict_info = {key: val for key, val in self.dict_info.items() if not (
-            isinstance(val, set) and len(val) == 0)}
-
-    def set_os_type(self):
-        lief_types = [lief.ELF.Binary, lief.PE.Binary, lief.MachO.Binary]
-        os_types = list(BinaryInfo.OSType)
-        for i in range(len(lief_types)):
-            if isinstance(self.lief_parsed, lief_types[i]):
-                self.os_type = os_types[i]
-
-    def info(self):
-        return self.dict_info
-
-    def __iter__(self):
-        return self.dict_info
-
-
-class ReportInfo:
-    def __init__(self, malware_name, author_name, malware_source, malware_link):
-        self.malware_name = malware_name
-        self.author_name = author_name
-        self.malware_source = malware_source
-        self.malware_link = malware_link
-        self.date = datetime.now()
-
-
+# used in both Static and Dynamic analysis
 class VirusTotalAPI:
     VT_KEY = "VIRUS_TOTAL_API_KEY"
 
-    def __init__(self, sha256, api_key):
-        try:
-            self.client = vt.Client(api_key)
-            self.file = self.client.get_object(f"/files/{sha256}")
-        except vt.error.APIError:
-            self.file = type('NoFileAnalytics', (), {})()
-            self.file.last_analysis_stats = {}
+    def __init__():
+        pass
 
+    @staticmethod
+    def file_info(hashsum):
+        try:
+            api_key = VirusTotalAPI.get_vt_key()
+            client = vt.Client(api_key)
+            file = client.get_object(f"/files/{hashsum}")
+        except vt.error.APIError:
+            file = type('NoFileAnalytics', (), {})()
+            file.last_analysis_stats = {}
         except Exception:
             print(traceback.format_exc())
+        finally:
+            client.close()
+        return file.last_analysis_stats
 
-    def info(self):
-        return self.file.last_analysis_stats
+    staticmethod
+    def get_vt_key():
+        try:
+            vt_key = os.environ[VirusTotalAPI.VT_KEY]
+        except KeyError:
+            vt_key = input("Enter Virus Total API Key: ")
+            os.environ[VirusTotalAPI.VT_KEY] = vt_key
+        return vt_key
 
-    def __iter__(self):
-        return self.file.last_analysis_stats
+class StaticAnalysis:
 
-    def __del__(self):
-        self.client.close()
+    def __init__(self, malware_file):
+        self.malware_file = malware_file
+        self.hash_info = StaticAnalysis.HashInfo(self.malware_file)
+        self.string_info = StaticAnalysis.Strings(self.malware_file)
+        self.binary_info = StaticAnalysis.BinaryInfo(self.malware_file)
+        self.vt_info = VirusTotalAPI.file_info(self.hash_info.info()['sha256'])
 
-class MonitorParser:
-    DURATION = 5 # seconds
-    LOGNAME = "Logs"
+    class Strings:
+        def __init__(self, malware_file):
+            self.malware_file = malware_file
 
-    def __init__(self, duration=DURATION, detonation_time=time.time()):
-        self.detonation_time = detonation_time
+        def strings(self, min=4):
+            with open(self.malware_file, errors="ignore") as f:
+                result = ""
+                for c in f.read():
+                    if c in string.printable:
+                        result += c
+                        continue
+                    if len(result) >= min:
+                        yield result
+                    result = ""
+                if len(result) >= min:  # catch result at EOF
+                    yield result
 
-        if not os.path.exists(MonitorParser.LOGNAME):
-            os.makedirs(MonitorParser.LOGNAME)
-
-        self.monitor_info = Monitor.monitor.main(duration)
-
-    def parse_processes(self, monitor_name="process_monitor"):
-        raw_processes = self.monitor_info[monitor_name]
-        delayed_processes = []
-        for process in raw_processes:
-            if process["create_time"] > self.detonation_time:
-                delayed_processes.append(process)
-        logfile = os.path.join(MonitorParser.LOGNAME, f"{monitor_name}.json")
-        with open(logfile, 'w') as f:
-            json.dump(delayed_processes, f)
-        parsed_processes = []
-        for parsed_process in delayed_processes:
-            parsed_processes.append(parsed_process["name"])
-        parsed_processes = set(parsed_processes)
-        return parsed_processes
-
-    def parse_network_packets(self, monitor_name="network_monitor"):
-        raw_packets = self.monitor_info[monitor_name]
-        logfile = os.path.join(MonitorParser.LOGNAME, f"{monitor_name}.pcap")
-        wrpcap(logfile, raw_packets)
-        delayed_packets = []
-        for packet in raw_packets[DNSQR]:
-            if packet.time > self.detonation_time:
-                delayed_packets.append(packet)
-
-        # filter packets by suspicious dns query
-        query_names = set()
-        for packet in delayed_packets:
-            query_names.add(packet[DNSQR].qname.decode('utf-8'))
+        def info(self):
+            return list(self.strings())[0].rstrip()
 
 
-        return query_names
+    class HashInfo:
+        HASH_ORDER = ["md5", "sha1", "sha256"]
 
-    def parse_changed_files(self, monitor_name="changed_files"):
-        raw_file_changes = self.monitor_info["filesystem_monitor"]
-        logfile = os.path.join(MonitorParser.LOGNAME, f"{monitor_name}.json")
-        with open(logfile, 'w') as f:
-            json.dump(raw_file_changes, f)
-        parsed_file_changes = set()
-        for file_change in raw_file_changes:
-            if file_change["time"] > self.detonation_time:
-                parsed_file_changes.add(file_change['source'])
-        return parsed_file_changes
+        def __init__(self, malware_file):
+            # set hashers
+            self.all_hashes = [hashlib.md5(), hashlib.sha1(), hashlib.sha256()]
+            with FileManager(malware_file) as file_manager:
+                for buf in file_manager.read():
+                    for hasher in self.all_hashes:
+                        hasher.update(buf)
+
+            for i in range(len(self.all_hashes)):
+                self.all_hashes[i] = self.all_hashes[i].hexdigest()
+
+            self.parse_info()
+
+        def parse_info(self):
+            self.dict_info = {}
+            for i in range(len(StaticAnalysis.HashInfo.HASH_ORDER)):
+                self.dict_info[StaticAnalysis.HashInfo.HASH_ORDER[i]] = self.all_hashes[i]
+
+        def get_info(self):
+            info = ""
+            for i in range(len(self.all_hashes)):
+                info += f"{StaticAnalysis.HashInfo.HASH_ORDER[i]}: {self.all_hashes[i]}\n"
+            return info
+
+        def info(self):
+            return self.dict_info
+
+        def __iter__(self):
+            return self.dict_info
 
 
+    class BinaryInfo:
 
+        class OSType(Enum):
+            LINUX = 1  # the best choice
+            MAC = 2 # meh
+            WINDOWS = 3 # eww why?
+
+        def __init__(self, malware_file):
+            self.lief_parsed = lief.parse(malware_file)
+            if self.lief_parsed:
+                self.header_info = self.lief_parsed.header
+                self.header_attr = [info for info in dir(self.header_info) if not info.startswith(
+                    "__") and not callable(getattr(self.header_info, info))]
+
+                # set os type
+                self.set_os_type()
+
+                self.parse_info()
+            else:
+                self.header_info = []
+                self.header_attr = []
+                self.dict_info = {}
+                self.os_type = None
+
+        # convert lief object to dictionary using output
+
+        def parse_info(self):
+            self.dict_info = {}
+            # convert to dict
+            for i in range(len(self.header_attr)):
+                self.dict_info[self.header_attr[i]] = getattr(
+                    self.header_info, self.header_attr[i])
+            # remove empty information
+            self.dict_info = {key: val for key, val in self.dict_info.items() if not (
+                isinstance(val, set) and len(val) == 0)}
+
+        def set_os_type(self):
+            lief_types = [lief.ELF.Binary, lief.PE.Binary, lief.MachO.Binary]
+            os_types = list(BinaryInfo.OSType)
+            for i in range(len(lief_types)):
+                if isinstance(self.lief_parsed, lief_types[i]):
+                    self.os_type = os_types[i]
+
+        def info(self):
+            return self.dict_info
+
+        def __iter__(self):
+            return self.dict_info
 
 class DynamicAnalysis:
 
@@ -262,31 +211,77 @@ class DynamicAnalysis:
     def changed_files_info(self):
         pass
 
+    class MonitorParser:
+        DURATION = 5 # seconds
+        LOGNAME = "Logs"
+
+        def __init__(self, duration=DURATION, detonation_time=time.time()):
+            self.detonation_time = detonation_time
+
+            if not os.path.exists(MonitorParser.LOGNAME):
+                os.makedirs(MonitorParser.LOGNAME)
+
+            self.monitor_info = Monitor.monitor.main(duration)
+
+        def parse_processes(self, monitor_name="process_monitor"):
+            raw_processes = self.monitor_info[monitor_name]
+            delayed_processes = []
+            for process in raw_processes:
+                if process["create_time"] > self.detonation_time:
+                    delayed_processes.append(process)
+            logfile = os.path.join(MonitorParser.LOGNAME, f"{monitor_name}.json")
+            with open(logfile, 'w') as f:
+                json.dump(delayed_processes, f)
+            parsed_processes = []
+            for parsed_process in delayed_processes:
+                parsed_processes.append(parsed_process["name"])
+            parsed_processes = set(parsed_processes)
+            return parsed_processes
+
+        def parse_network_packets(self, monitor_name="network_monitor"):
+            raw_packets = self.monitor_info[monitor_name]
+            logfile = os.path.join(MonitorParser.LOGNAME, f"{monitor_name}.pcap")
+            wrpcap(logfile, raw_packets)
+            delayed_packets = []
+            for packet in raw_packets[DNSQR]:
+                if packet.time > self.detonation_time:
+                    delayed_packets.append(packet)
+            # filter packets by suspicious dns query
+            query_names = set()
+            for packet in delayed_packets:
+                query_names.add(packet[DNSQR].qname.decode('utf-8'))
+            return query_names
+
+        def parse_changed_files(self, monitor_name="changed_files"):
+            raw_file_changes = self.monitor_info["filesystem_monitor"]
+            logfile = os.path.join(MonitorParser.LOGNAME, f"{monitor_name}.json")
+            with open(logfile, 'w') as f:
+                json.dump(raw_file_changes, f)
+            parsed_file_changes = set()
+            for file_change in raw_file_changes:
+                if file_change["time"] > self.detonation_time:
+                    parsed_file_changes.add(file_change['source'])
+            return parsed_file_changes
+
+
+class ReportInfo:
+    def __init__(self, malware_name, author_name, malware_source, malware_link):
+        self.malware_name = malware_name
+        self.author_name = author_name
+        self.malware_source = malware_source
+        self.malware_link = malware_link
+        self.date = datetime.now()
+
 
 class MalInfo:
 
-    def __init__(self, hash_info, binary_info, vt_info, string_info):
-        self.hash_info = hash_info
-        self.binary_info = binary_info
-        self.vt_info = vt_info
-        self.string_info = string_info
+    def __init__(self):
+        self.static_analysis = StaticAnalysis()
 
 
-class ReportGenerator:
-
-    REPORT_TEMPLATE = os.path.join(os.path.dirname(
-        os.path.realpath(__file__)), "report_template.md")
-
-    def __init__(self, malware_file):
-        self.input = click.prompt
-        self.print = click.echo
-        self.malware_file = malware_file
-        hash_info = HashInfo(self.malware_file)
-        binary_info = BinaryInfo(self.malware_file)
-        vt_info = VirusTotalAPI(
-            hash_info.info()['sha256'], self.get_vt_key())
-        string_info = Strings(self.malware_file)
-        self.mal_info = MalInfo(hash_info, binary_info, vt_info, string_info)
+class MarkdownFormatter:
+    def __init__(self):
+        pass
 
     @staticmethod
     def extract_strings(list_of_strings):
@@ -295,27 +290,6 @@ class ReportGenerator:
             strings += f"{binary_string}\n"
 
         return strings
-
-    def get_report_info(self):
-        malware_name = self.input(
-            "What is the main name of the malware?\n", type=str)
-        author_name = self.input(
-            "What is the report author's name?\n", type=str)
-        malware_source = self.input(
-            "Where was the malware found?\n", type=str)
-        malware_link = self.input(
-            "What is the link to access the malware?\n", type=str)
-        report_info = ReportInfo(
-            malware_name, author_name, malware_source, malware_link)
-        return report_info
-
-    def get_vt_key(self):
-        try:
-            vt_key = os.environ[VirusTotalAPI.VT_KEY]
-        except KeyError:
-            vt_key = self.input("Enter Virus Total API Key", type=str)
-            os.environ[VirusTotalAPI.VT_KEY] = vt_key
-        return vt_key
 
     @staticmethod
     def format_info_table(info, *headers):
@@ -351,10 +325,37 @@ class ReportGenerator:
             table += "\n"
         return table
 
+class ReportGenerator:
+
+    REPORT_TEMPLATE = os.path.join(os.path.dirname(
+        os.path.realpath(__file__)), "report_template.md")
+
+    def __init__(self, malware_file):
+        self.input = click.prompt
+        self.print = click.echo
+        self.malware_file = malware_file
+        self.mal_info = MalInfo()
+
+
+    def get_report_info(self):
+        malware_name = self.input(
+            "What is the main name of the malware?\n", type=str)
+        author_name = self.input(
+            "What is the report author's name?\n", type=str)
+        malware_source = self.input(
+            "Where was the malware found?\n", type=str)
+        malware_link = self.input(
+            "What is the link to access the malware?\n", type=str)
+        report_info = ReportInfo(
+            malware_name, author_name, malware_source, malware_link)
+        return report_info
+
+
+
     def generate_report(self, report_name):
 
         try:
-            with open(ReportGenerator.REPORT_TEMPLATE) as f:
+            with open(report_name) as f:
                 report_info = self.get_report_info()
                 malware_name = report_info.malware_name
                 author_name = report_info.author_name
@@ -363,14 +364,14 @@ class ReportGenerator:
                 malware_source_link = report_info.malware_link
 
                 hashes = ReportGenerator.format_info_table(
-                    self.mal_info.hash_info.info(), "Hash", "Value")
+                    self.mal_info.static_analysis.hash_info.info(), "Hash", "Value")
                 binary_info = ReportGenerator.format_info_table(
-                    self.mal_info.binary_info.info(), "Info", "Value")
+                    self.mal_info.static_analysis.binary_info.info(), "Info", "Value")
                 virus_total_info = ReportGenerator.format_info_table(
-                    self.mal_info.vt_info.info(), "Info", "Value")
+                    self.mal_info.static_analysis.vt_info.file_info(), "Info", "Value")
 
                 strings = ReportGenerator.extract_strings(
-                    self.mal_info.string_info.info())
+                    self.mal_info.static_analysis.string_info.info())
 
                 report_template = f.read()
                 report = report_template.format(malware_name=malware_name, author_name=author_name,
@@ -391,96 +392,14 @@ class ReportGenerator:
             f.write(report)
 
 
-def hash_info_test():
-    test_file = "test.txt"
-    md5 = "e19c1283c925b3206685ff522acfe3e6"
-    sha1 = "6476df3aac780622368173fe6e768a2edc3932c8"
-    sha256 = "91751cee0a1ab8414400238a761411daa29643ab4b8243e9a91649e25be53ada"
-    all_hashes = [md5, sha1, sha256]
-
-    hash_info = HashInfo(test_file)
-
-    print(hash_info.get_info())
-    for i in range(len(all_hashes)):
-        assert (all_hashes[i] == hash_info.all_hashes[i])
-
-    return hash_info
-
-
-def binary_info_test():
-    test_bin = "test_c_bin"
-    binary_info = BinaryInfo(test_bin)
-    print(binary_info.os_type)
-    print(binary_info.info())
-    return binary_info
-
-
-def virus_total_api_test():
-    _hash = "0c82e654c09c8fd9fdf4899718efa37670974c9eec5a8fc18a167f93cea6ee83"
-    try:
-        vt_key = os.environ[VirusTotalAPI.VT_KEY]
-    except KeyError:
-        vt_key = click.prompt("Enter Virus Total API Key", type=str)
-        os.environ[VirusTotalAPI.VT_KEY] = vt_key
-
-    vt_api = VirusTotalAPI(_hash, vt_key)
-    print(vt_api)
-    return vt_api
-
-
-def format_info_table_test():
-    hash_info = hash_info_test()
-    hash_dict = hash_info.info()
-    table = ReportGenerator.format_info_table(
-        hash_dict, "Hashing Algorithm", "Value")
-    print(table)
-    return table
-
-
-def strings_test():
-    test_bin = "test_c_bin"
-    string_info = Strings(test_bin).info()
-
-    for info in string_info:
-        print(info)
-    return string_info
-
-
-def report_generator_test():
-    malware_file = "test_c_bin"
-    report_name = "test_report.md"
-    report_generator = ReportGenerator(malware_file)
-    report_generator.generate_report(report_name)
-
-def monitor_parser_test():
-    monitor_parser = MonitorParser()
-    ic(monitor_parser.parse_processes())
-    ic(monitor_parser.parse_network_packets())
-    ic(monitor_parser.parse_changed_files())
-    sys.exit()
-
-
-def test_all():
-    hash_info_test()
-    binary_info_test()
-    virus_total_api_test()
-    format_info_table_test()
-    strings_test()
-    report_generator_test()
-
-
-def _test():
-    binary_info_test()
-
-
 @click.command()
 @click.argument("output_file", type=str)
 @click.argument("malware_file", type=str)
+@click.option("-T", "--test", "test", is_flag=True, default=False, help="Run the program against a known file to help troubleshoot")
 def generate(output_file, malware_file):
     monitor_parser_test()
     report_generator = ReportGenerator(malware_file)
     report_generator.generate_report(output_file)
-
 
 if __name__ == "__main__":
     generate()
