@@ -9,7 +9,7 @@ from malinfo import *
 
 
 def static_analysis_test():
-    static_analysis = StaticAnalysis("test.txt")
+    static_analysis = StaticAnalysis("hello_world")
     ic(static_analysis.hash_info.info()) 
     ic(static_analysis.string_info.info())
     ic(static_analysis.binary_info.info())
@@ -42,10 +42,10 @@ def write_to_tmp(duration):
 
         run_time = time.time() - start_time
         time.sleep(1)
-    ic("Removing file")
     os.remove(tmp_path)
+    ic("removed file")
 
-def dynamic_analysis_test(duration = 10):
+def malware_test(duration = 10):
     malinfo_test_functions = [dummy_process, dns_requests, write_to_tmp]
 
     processes = []
@@ -57,5 +57,12 @@ def dynamic_analysis_test(duration = 10):
     for process in processes:
         process.join()
 
+def dynamic_analysis_test():
+    dynamic_analysis = DynamicAnalysis()
+    ic(dynamic_analysis.processes_info)
+    ic(dynamic_analysis.network_packet_info)
+    ic(dynamic_analysis.file_changes_info)
+    
+
 if __name__ == "__main__":
-    static_analysis_test()
+    dynamic_analysis_test()

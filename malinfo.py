@@ -9,6 +9,7 @@ import string
 import traceback
 import time
 import json
+import multiprocessing
 from icecream import ic
 from datetime import datetime
 from scapy.all import *
@@ -54,11 +55,11 @@ class VirusTotalAPI:
         pass
 
     @staticmethod
-    def file_info(hashsum):
+    def file_info(hashsum, hash_type="sha256"):
         try:
             api_key = VirusTotalAPI.get_vt_key()
             client = vt.Client(api_key)
-            file = client.get_object(f"/files/{hashsum}")
+            file = client.get_object(f"/files/{hashsum[hash_type]}")
         except vt.error.APIError:
             file = type('NoFileAnalytics', (), {})()
             file.last_analysis_stats = {}
@@ -84,7 +85,7 @@ class StaticAnalysis:
         self.hash_info = StaticAnalysis.HashInfo(self.malware_file)
         self.string_info = StaticAnalysis.Strings(self.malware_file)
         self.binary_info = StaticAnalysis.BinaryInfo(self.malware_file)
-        self.vt_info = VirusTotalAPI.file_info(self.hash_info.info()['sha256'])
+        self.vt_info = VirusTotalAPI.file_info(self.hash_info.info())
 
     class Strings:
         def __init__(self, malware_file):
@@ -104,7 +105,7 @@ class StaticAnalysis:
                     yield result
 
         def info(self):
-            return list(self.strings())[0].rstrip()
+            return list(self.strings())
 
 
     class HashInfo:
@@ -179,7 +180,7 @@ class StaticAnalysis:
 
         def set_os_type(self):
             lief_types = [lief.ELF.Binary, lief.PE.Binary, lief.MachO.Binary]
-            os_types = list(BinaryInfo.OSType)
+            os_types = list(StaticAnalysis.BinaryInfo.OSType)
             for i in range(len(lief_types)):
                 if isinstance(self.lief_parsed, lief_types[i]):
                     self.os_type = os_types[i]
@@ -193,14 +194,28 @@ class StaticAnalysis:
 class DynamicAnalysis:
 
     def __init__(self):
-        self.execute_binary()
-        self.monitor()
+        self.conn1, self.conn2 = multiprocessing.Pipe()
+        listener = multiprocessing.Process(target=DynamicAnalysis.listen, args=(self,))
+        detonater = multiprocessing.Process(target=DynamicAnalysis.execute_binary)
+        # start listening
+        listener.start()
+        # detonate malware
+        detonater.start()
+        # parse results
+        detonater.join(timeout=1)
+        listener.join(timeout=1)
+        self.monitor_parser = self.conn1.recv()
+        self.processes_info = self.monitor_parser.parse_processes()
+        self.network_packet_info = self.monitor_parser.parse_network_packets()
+        self.file_changes_info = self.monitor_parser.parse_file_changes()
 
-    def execute_binary(self):
-        pass
+    @staticmethod
+    def listen(self):
+        self.conn2.send(DynamicAnalysis.MonitorParser())
 
-    def monitor(self):
-        self.monitor_parser = MonitorParser()
+    def execute_binary():
+        from Tests.malinfo_test import malware_test
+        malware_test()
 
     def processes_info(self):
         pass
@@ -212,14 +227,14 @@ class DynamicAnalysis:
         pass
 
     class MonitorParser:
-        DURATION = 5 # seconds
+        DURATION = 10 # seconds
         LOGNAME = "Logs"
 
         def __init__(self, duration=DURATION, detonation_time=time.time()):
             self.detonation_time = detonation_time
 
-            if not os.path.exists(MonitorParser.LOGNAME):
-                os.makedirs(MonitorParser.LOGNAME)
+            if not os.path.exists(DynamicAnalysis.MonitorParser.LOGNAME):
+                os.makedirs(DynamicAnalysis.MonitorParser.LOGNAME)
 
             self.monitor_info = Monitor.monitor.main(duration)
 
@@ -229,7 +244,7 @@ class DynamicAnalysis:
             for process in raw_processes:
                 if process["create_time"] > self.detonation_time:
                     delayed_processes.append(process)
-            logfile = os.path.join(MonitorParser.LOGNAME, f"{monitor_name}.json")
+            logfile = os.path.join(DynamicAnalysis.MonitorParser.LOGNAME, f"{monitor_name}.json")
             with open(logfile, 'w') as f:
                 json.dump(delayed_processes, f)
             parsed_processes = []
@@ -240,7 +255,7 @@ class DynamicAnalysis:
 
         def parse_network_packets(self, monitor_name="network_monitor"):
             raw_packets = self.monitor_info[monitor_name]
-            logfile = os.path.join(MonitorParser.LOGNAME, f"{monitor_name}.pcap")
+            logfile = os.path.join(DynamicAnalysis.MonitorParser.LOGNAME, f"{monitor_name}.pcap")
             wrpcap(logfile, raw_packets)
             delayed_packets = []
             for packet in raw_packets[DNSQR]:
@@ -249,12 +264,12 @@ class DynamicAnalysis:
             # filter packets by suspicious dns query
             query_names = set()
             for packet in delayed_packets:
-                query_names.add(packet[DNSQR].qname.decode('utf-8'))
+                query_names.add(packet[DNSQR].qname.decode('utf-8')[:-1])
             return query_names
 
-        def parse_changed_files(self, monitor_name="changed_files"):
+        def parse_file_changes(self, monitor_name="changed_files"):
             raw_file_changes = self.monitor_info["filesystem_monitor"]
-            logfile = os.path.join(MonitorParser.LOGNAME, f"{monitor_name}.json")
+            logfile = os.path.join(DynamicAnalysis.MonitorParser.LOGNAME, f"{monitor_name}.json")
             with open(logfile, 'w') as f:
                 json.dump(raw_file_changes, f)
             parsed_file_changes = set()
