@@ -408,13 +408,15 @@ class ReportGenerator:
 
 
 @click.command()
+@click.option("-m", "--monitor_duration", "monitor_duration", type=float)
+@click.option("-d", "--directories", "directories", type=str, multiple=True)
 @click.argument("output_file", type=str)
 @click.argument("malware_file", type=str)
-@click.option("-T", "--test", "test", is_flag=True, default=False, help="Run the program against a known file to help troubleshoot")
-def generate(output_file, malware_file):
-    monitor_parser_test()
-    report_generator = ReportGenerator(malware_file)
-    report_generator.generate_report(output_file)
+def generate(monitor_duration, directories, output_file, malware_file):
+    ic(monitor_duration)
+    ic(directories)
+    ic(output_file)
+    ic(malware_file)
 
 if __name__ == "__main__":
     generate()
