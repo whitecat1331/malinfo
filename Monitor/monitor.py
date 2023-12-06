@@ -9,9 +9,6 @@ if __name__ == "__main__":
 else:
     import Monitor.filewatch as filewatch
 
-DURATION = 5
-DEPTH_LIMIT = 0
-
 def process_monitor(duration):
     start_time = time.time() 
 
@@ -33,19 +30,20 @@ def network_monitor(duration):
     network_packets = sniff(timeout=duration)
     return {"network_monitor": network_packets}
 
-def filesystem_monitor(duration):
-    return {"filesystem_monitor": filewatch.main()}
-
-MONITORS = [process_monitor, network_monitor, filesystem_monitor]
-DURATION = 5
+def filesystem_monitor(duration, directories):
+    return {"filesystem_monitor": filewatch.main(duration, directories)}
 
 
-def main(duration=DURATION):
+def main(duration, directories):
     process_pool_executor = ProcessPoolExecutor()
     processes = []
-    for monitor in MONITORS:
-        running_process = process_pool_executor.submit(monitor, duration)
-        processes.append(running_process)
+    running_process = process_pool_executor.submit(process_monitor, duration)
+    processes.append(running_process)
+    running_process = process_pool_executor.submit(network_monitor, duration)
+    processes.append(running_process)
+    running_process = process_pool_executor.submit(filesystem_monitor, duration, directories)
+    processes.append(running_process)
+
 
     all_monitor_results = {}
     for running_process in processes:
@@ -54,7 +52,8 @@ def main(duration=DURATION):
 
     return all_monitor_results
 
-
+DURATION = 5
+DIRECTORIES = []
 
 if __name__ == "__main__":
-    main()
+    main(DURATION, DIRECTORIES)

@@ -194,10 +194,10 @@ class StaticAnalysis:
 
 class DynamicAnalysis:
 
-    def __init__(self):
+    def __init__(self, duration, directories):
         process_pool_executor = ProcessPoolExecutor()
         # start listening
-        listener = process_pool_executor.submit(self.listen)
+        listener = process_pool_executor.submit(self.listen, duration, directories)
         # detonate malware
         detonater = multiprocessing.Process(target=DynamicAnalysis.execute_binary)
         detonater.start()
@@ -208,8 +208,8 @@ class DynamicAnalysis:
         self.network_packet_info = self.monitor_parser.parse_network_packets()
         self.file_changes_info = self.monitor_parser.parse_file_changes()
 
-    def listen(self):
-        return DynamicAnalysis.MonitorParser()
+    def listen(self, duration, directories):
+        return DynamicAnalysis.MonitorParser(duration, directories)
 
     def execute_binary():
         from Tests.malinfo_test import malware_test
@@ -225,16 +225,15 @@ class DynamicAnalysis:
         pass
 
     class MonitorParser:
-        DURATION = 5 # seconds
         LOGNAME = "Logs"
 
-        def __init__(self, duration=DURATION, detonation_time=time.time()):
+        def __init__(self, duration, directories, detonation_time=time.time()):
             self.detonation_time = detonation_time
 
             if not os.path.exists(DynamicAnalysis.MonitorParser.LOGNAME):
                 os.makedirs(DynamicAnalysis.MonitorParser.LOGNAME)
 
-            self.monitor_info = Monitor.monitor.main(duration)
+            self.monitor_info = Monitor.monitor.main(duration, directories)
 
         def parse_processes(self, monitor_name="process_monitor"):
             raw_processes = self.monitor_info[monitor_name]
@@ -288,7 +287,7 @@ class ReportInfo:
 
 class MalInfo:
 
-    def __init__(self):
+    def __init__(self, duration, directories):
         self.static_analysis = StaticAnalysis()
 
 

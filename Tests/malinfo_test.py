@@ -59,7 +59,9 @@ def malware_test(duration = 5):
         process.join(timeout=1)
 
 def dynamic_analysis_test():
-    dynamic_analysis = DynamicAnalysis()
+    duration = 5
+    dirctories = []
+    dynamic_analysis = DynamicAnalysis(duration, dirctories)
     ic(dynamic_analysis.processes_info)
     ic(dynamic_analysis.network_packet_info)
     ic(dynamic_analysis.file_changes_info)
