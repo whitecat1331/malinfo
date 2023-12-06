@@ -45,7 +45,7 @@ def write_to_tmp(duration):
     os.remove(tmp_path)
     ic("removed file")
 
-def malware_test(duration = 10):
+def malware_test(duration = 5):
     malinfo_test_functions = [dummy_process, dns_requests, write_to_tmp]
 
     processes = []

@@ -10,11 +10,12 @@ import traceback
 import time
 import json
 import multiprocessing
+import traceback
+from concurrent.futures import ProcessPoolExecutor
 from icecream import ic
 from datetime import datetime
 from scapy.all import *
 from enum import Enum
-import traceback
 
 
 class FileManager:
@@ -194,25 +195,21 @@ class StaticAnalysis:
 class DynamicAnalysis:
 
     def __init__(self):
-        self.conn1, self.conn2 = multiprocessing.Pipe()
-        listener = multiprocessing.Process(target=self.listen)
-        detonater = multiprocessing.Process(target=DynamicAnalysis.execute_binary)
+        process_pool_executor = ProcessPoolExecutor()
         # start listening
-        listener.start()
+        listener = process_pool_executor.submit(self.listen)
         # detonate malware
+        detonater = multiprocessing.Process(target=DynamicAnalysis.execute_binary)
         detonater.start()
         # parse results
-        detonater.join(timeout=1)
-        listener.join(timeout=1)
-        self.monitor_parser = self.conn1.recv()
-        self.conn1.close()
+        detonater.join()
+        self.monitor_parser = listener.result()
         self.processes_info = self.monitor_parser.parse_processes()
         self.network_packet_info = self.monitor_parser.parse_network_packets()
         self.file_changes_info = self.monitor_parser.parse_file_changes()
 
     def listen(self):
-        self.conn2.send(DynamicAnalysis.MonitorParser())
-        self.conn2.close()
+        return DynamicAnalysis.MonitorParser()
 
     def execute_binary():
         from Tests.malinfo_test import malware_test
