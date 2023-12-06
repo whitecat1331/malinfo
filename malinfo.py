@@ -195,7 +195,7 @@ class DynamicAnalysis:
 
     def __init__(self):
         self.conn1, self.conn2 = multiprocessing.Pipe()
-        listener = multiprocessing.Process(target=DynamicAnalysis.listen, args=(self,))
+        listener = multiprocessing.Process(target=self.listen)
         detonater = multiprocessing.Process(target=DynamicAnalysis.execute_binary)
         # start listening
         listener.start()
@@ -205,13 +205,14 @@ class DynamicAnalysis:
         detonater.join(timeout=1)
         listener.join(timeout=1)
         self.monitor_parser = self.conn1.recv()
+        self.conn1.close()
         self.processes_info = self.monitor_parser.parse_processes()
         self.network_packet_info = self.monitor_parser.parse_network_packets()
         self.file_changes_info = self.monitor_parser.parse_file_changes()
 
-    @staticmethod
     def listen(self):
         self.conn2.send(DynamicAnalysis.MonitorParser())
+        self.conn2.close()
 
     def execute_binary():
         from Tests.malinfo_test import malware_test
@@ -227,7 +228,7 @@ class DynamicAnalysis:
         pass
 
     class MonitorParser:
-        DURATION = 10 # seconds
+        DURATION = 5 # seconds
         LOGNAME = "Logs"
 
         def __init__(self, duration=DURATION, detonation_time=time.time()):

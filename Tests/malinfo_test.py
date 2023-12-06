@@ -54,8 +54,9 @@ def malware_test(duration = 10):
         processes.append(p)
         p.start()
 
+
     for process in processes:
-        process.join()
+        process.join(timeout=1)
 
 def dynamic_analysis_test():
     dynamic_analysis = DynamicAnalysis()
