@@ -11,6 +11,7 @@ import json
 import multiprocessing
 import magic 
 import traceback
+import subprocess
 import Monitor.monitor
 from markdown_formatter import MarkdownFormatter
 from concurrent.futures import ProcessPoolExecutor
@@ -88,7 +89,7 @@ class StaticAnalysis:
 
     def __init__(self, malware_file, hash_type = "sha256"):
         self.malware_file = malware_file
-        self.magic_byte_info = magic.from_file(self.malware_file)
+        self.magic_bytes_info = magic.from_file(self.malware_file)
         self.header_info = str(lief.parse(malware_file))
         self.hash_info = StaticAnalysis.HashInfo(self.malware_file).info()
         self.string_info = StaticAnalysis.Strings(self.malware_file).info()
@@ -151,12 +152,11 @@ class StaticAnalysis:
 class DynamicAnalysis:
 
     def __init__(self, duration, directories, static_analysis):
-        self.static_analysis = static_analysis
         process_pool_executor = ProcessPoolExecutor()
         # start listening
-        listener = process_pool_executor.submit(self.listen, duration, directories)
+        listener = process_pool_executor.submit(DynamicAnalysis.listen, duration, directories)
         # detonate malware
-        detonater = multiprocessing.Process(target=DynamicAnalysis.execute_binary)
+        detonater = multiprocessing.Process(target=DynamicAnalysis.execute_binary, args=(static_analysis, ))
         detonater.start()
         # parse results
         detonater.join()
@@ -165,12 +165,20 @@ class DynamicAnalysis:
         self.network_packet_info = self.monitor_parser.parse_network_packets()
         self.file_changes_info = self.monitor_parser.parse_file_changes()
 
-    def listen(self, duration, directories):
+    @staticmethod
+    def listen(duration, directories):
         return DynamicAnalysis.MonitorParser(duration, directories)
 
-    def execute_binary():
-        from Tests.malinfo_test import malware_test
-        malware_test()
+    @staticmethod
+    def execute_binary(static_analysis):
+        # python
+        magic_bytes_info = static_analysis.magic_bytes_info.lower()
+        if "python" in magic_bytes_info and "executable" in magic_bytes_info:
+            subprocess.run(["python", static_analysis.malware_file])
+            
+
+        # lief.ELF.Binary
+        # lief.PE.Binary
 
         
 
@@ -225,15 +233,11 @@ class DynamicAnalysis:
                     parsed_file_changes.add(file_change['source'])
             return parsed_file_changes
 
-
-
-
 class MalInfo:
 
-    def __init__(self, duration, directories):
-        self.static_analysis = StaticAnalysis()
+    def __init__(self, duration, directories, output_file, malware_file):
+        self.static_analysis = StaticAnalysis(malware_file)
         self.dynamic_analysis = DynamicAnalysis(duration, directories, self.static_analysis)
-
 
 
 class ReportGenerator:

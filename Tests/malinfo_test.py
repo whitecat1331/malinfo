@@ -8,15 +8,6 @@ sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
 from malinfo import *
 
 
-def static_analysis_test():
-    static_analysis = StaticAnalysis("Malware.Calc.exe.malz")
-    ic(static_analysis.magic_byte_info)
-    ic(static_analysis.hash_info) 
-    ic(static_analysis.string_info)
-    ic(static_analysis.header_info)
-    ic(static_analysis.vt_info)
-
-
 def dummy_process(duration):
     ic("Starting dummy process")
     time.sleep(duration)
@@ -55,18 +46,27 @@ def malware_test(duration = 5):
         processes.append(p)
         p.start()
 
-
     for process in processes:
         process.join(timeout=1)
 
+def static_analysis_test():
+    static_analysis = StaticAnalysis("Malware.Calc.exe.malz")
+    ic(static_analysis.magic_bytes_info)
+    ic(static_analysis.hash_info) 
+    ic(static_analysis.string_info)
+    ic(static_analysis.header_info)
+    ic(static_analysis.vt_info)
+
+
 def dynamic_analysis_test():
+    static_analysis = StaticAnalysis("Malware.Calc.exe.malz")
     duration = 5
     dirctories = []
-    dynamic_analysis = DynamicAnalysis(duration, dirctories)
+    dynamic_analysis = DynamicAnalysis(duration, dirctories, static_analysis)
     ic(dynamic_analysis.processes_info)
     ic(dynamic_analysis.network_packet_info)
     ic(dynamic_analysis.file_changes_info)
     
 
 if __name__ == "__main__":
-    static_analysis_test()
+    malware_test()
