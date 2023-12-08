@@ -1,4 +1,3 @@
-import Monitor.monitor
 import sys
 import hashlib
 import lief
@@ -10,14 +9,19 @@ import traceback
 import time
 import json
 import multiprocessing
+import magic 
 import traceback
+import Monitor.monitor
+from markdown_formatter import MarkdownFormatter
 from concurrent.futures import ProcessPoolExecutor
+from dotenv import load_dotenv
 from icecream import ic
 from datetime import datetime
-from scapy.all import *
 from enum import Enum
+from scapy.all import *
 
 
+# used in both Static and Dynamic analysis
 class FileManager:
 
     BLOCKSIZE = 65536
@@ -48,7 +52,6 @@ class FileManager:
     def __del__(self):
         self.malware_handle.close()
 
-# used in both Static and Dynamic analysis
 class VirusTotalAPI:
     VT_KEY = "VIRUS_TOTAL_API_KEY"
 
@@ -56,16 +59,17 @@ class VirusTotalAPI:
         pass
 
     @staticmethod
-    def file_info(hashsum, hash_type="sha256"):
+    def file_info(hashsum):
         try:
             api_key = VirusTotalAPI.get_vt_key()
             client = vt.Client(api_key)
-            file = client.get_object(f"/files/{hashsum[hash_type]}")
+            file = client.get_object(f"/files/{hashsum}")
         except vt.error.APIError:
             file = type('NoFileAnalytics', (), {})()
             file.last_analysis_stats = {}
+            print("No File Analytics")
         except Exception:
-            print(traceback.format_exc())
+            traceback.print_exc
         finally:
             client.close()
         return file.last_analysis_stats
@@ -73,6 +77,7 @@ class VirusTotalAPI:
     staticmethod
     def get_vt_key():
         try:
+            load_dotenv()
             vt_key = os.environ[VirusTotalAPI.VT_KEY]
         except KeyError:
             vt_key = input("Enter Virus Total API Key: ")
@@ -81,12 +86,13 @@ class VirusTotalAPI:
 
 class StaticAnalysis:
 
-    def __init__(self, malware_file):
+    def __init__(self, malware_file, hash_type = "sha256"):
         self.malware_file = malware_file
-        self.hash_info = StaticAnalysis.HashInfo(self.malware_file)
-        self.string_info = StaticAnalysis.Strings(self.malware_file)
-        self.binary_info = StaticAnalysis.BinaryInfo(self.malware_file)
-        self.vt_info = VirusTotalAPI.file_info(self.hash_info.info())
+        self.magic_byte_info = magic.from_file(self.malware_file)
+        self.hash_info = StaticAnalysis.HashInfo(self.malware_file).info()
+        self.string_info = StaticAnalysis.Strings(self.malware_file).info()
+        self.binary_info = StaticAnalysis.BinaryInfo(self.malware_file).info()
+        self.vt_info = VirusTotalAPI.file_info(self.hash_info[hash_type])
 
     class Strings:
         def __init__(self, malware_file):
@@ -145,11 +151,6 @@ class StaticAnalysis:
 
     class BinaryInfo:
 
-        class OSType(Enum):
-            LINUX = 1  # the best choice
-            MAC = 2 # meh
-            WINDOWS = 3 # eww why?
-
         def __init__(self, malware_file):
             self.lief_parsed = lief.parse(malware_file)
             if self.lief_parsed:
@@ -158,7 +159,8 @@ class StaticAnalysis:
                     "__") and not callable(getattr(self.header_info, info))]
 
                 # set os type
-                self.set_os_type()
+                # self.set_os_type()
+                self.os_type = type(self.lief_parsed)
 
                 self.parse_info()
             else:
@@ -178,13 +180,6 @@ class StaticAnalysis:
             # remove empty information
             self.dict_info = {key: val for key, val in self.dict_info.items() if not (
                 isinstance(val, set) and len(val) == 0)}
-
-        def set_os_type(self):
-            lief_types = [lief.ELF.Binary, lief.PE.Binary, lief.MachO.Binary]
-            os_types = list(StaticAnalysis.BinaryInfo.OSType)
-            for i in range(len(lief_types)):
-                if isinstance(self.lief_parsed, lief_types[i]):
-                    self.os_type = os_types[i]
 
         def info(self):
             return self.dict_info
@@ -214,15 +209,6 @@ class DynamicAnalysis:
     def execute_binary():
         from Tests.malinfo_test import malware_test
         malware_test()
-
-    def processes_info(self):
-        pass
-
-    def network_packet_info(self):
-        pass
-
-    def changed_files_info(self):
-        pass
 
     class MonitorParser:
         LOGNAME = "Logs"
@@ -276,77 +262,37 @@ class DynamicAnalysis:
             return parsed_file_changes
 
 
-class ReportInfo:
-    def __init__(self, malware_name, author_name, malware_source, malware_link):
-        self.malware_name = malware_name
-        self.author_name = author_name
-        self.malware_source = malware_source
-        self.malware_link = malware_link
-        self.date = datetime.now()
 
 
 class MalInfo:
 
     def __init__(self, duration, directories):
         self.static_analysis = StaticAnalysis()
+        self.dynamic_analysis = DynamicAnalysis(duration, directories)
 
 
-class MarkdownFormatter:
-    def __init__(self):
-        pass
-
-    @staticmethod
-    def extract_strings(list_of_strings):
-        strings = ""
-        for binary_string in list_of_strings:
-            strings += f"{binary_string}\n"
-
-        return strings
-
-    @staticmethod
-    def format_info_table(info, *headers):
-
-        if not info:
-            return ""
-
-        if not isinstance(info, dict):
-            raise TypeError("info must be a dictionary")
-
-        info = list(info.items())
-        # top table
-        table = "|"
-        for header in headers:
-            table += f" {header} |"
-        table += "\n"
-        # dashes
-        table += "|"
-        for header in headers:
-            table += " "
-            table += ("-" * len(header))
-            table += " |"
-        table += "\n"
-        # dictionary info
-        for row in range(len(info)):
-
-            if len(info[row]) != len(headers):
-                raise ValueError("Dictionary Info and Header Mismatch")
-
-            table += "|"
-            for col in range(len(info[row])):
-                table += f" {info[row][col]} |"
-            table += "\n"
-        return table
 
 class ReportGenerator:
+
+    class ReportInfo:
+        def __init__(self, malware_name, author_name, malware_source, malware_link):
+            self.malware_name = malware_name
+            self.author_name = author_name
+            self.malware_source = malware_source
+            self.malware_link = malware_link
+            self.date = datetime.now()
 
     REPORT_TEMPLATE = os.path.join(os.path.dirname(
         os.path.realpath(__file__)), "report_template.md")
 
-    def __init__(self, malware_file):
+
+    def __init__(self, monitor_duration, directories, output_file, malware_file):
         self.input = click.prompt
         self.print = click.echo
         self.malware_file = malware_file
-        self.mal_info = MalInfo()
+        self.malinfo = MalInfo(monitor_duration, directories)
+        self.report_name = output_file
+        self.generate_report()
 
 
     def get_report_info(self):
@@ -358,16 +304,16 @@ class ReportGenerator:
             "Where was the malware found?\n", type=str)
         malware_link = self.input(
             "What is the link to access the malware?\n", type=str)
-        report_info = ReportInfo(
+        report_info = ReportGenerator.ReportInfo(
             malware_name, author_name, malware_source, malware_link)
         return report_info
 
 
-
-    def generate_report(self, report_name):
+    def generate_report(self):
 
         try:
-            with open(report_name) as f:
+            with open(self.report_name) as f:
+                # Generic Report Info
                 report_info = self.get_report_info()
                 malware_name = report_info.malware_name
                 author_name = report_info.author_name
@@ -375,24 +321,48 @@ class ReportGenerator:
                 date = report_info.date
                 malware_source_link = report_info.malware_link
 
-                hashes = ReportGenerator.format_info_table(
-                    self.mal_info.static_analysis.hash_info.info(), "Hash", "Value")
-                binary_info = ReportGenerator.format_info_table(
-                    self.mal_info.static_analysis.binary_info.info(), "Info", "Value")
-                virus_total_info = ReportGenerator.format_info_table(
-                    self.mal_info.static_analysis.vt_info.file_info(), "Info", "Value")
+                # Static Analysis Report Info
+                magic_bytes_info = self.malinfo.static_analysis.magic_bytes_info
 
-                strings = ReportGenerator.extract_strings(
-                    self.mal_info.static_analysis.string_info.info())
+                hashes = MarkdownFormatter.format_info_table(
+                    self.malinfo.static_analysis.hash_info, "Hash", "Value"
+                    )
+                binary_info = MarkdownFormatter.format_info_table(
+                    self.malinfo.static_analysis.binary_info, "Info", "Value"
+                    )
+                virus_total_info = MarkdownFormatter.format_info_table(
+                    self.malinfo.static_analysis.vt_info, "Info", "Value"
+                    )
+
+                strings = MarkdownFormatter.extract_strings(
+                    self.malinfo.static_analysis.string_info
+                    )
+
+                # Dynamic Analysis Report Info
+                processes_info = MarkdownFormatter.extract_strings(
+                    self.malinfo.dynamic_analysis.processes_info
+                    )
+
+                network_info = MarkdownFormatter.extract_strings(
+                        self.malinfo.dynamic_analysis.network_packet_info
+                        )
+
+                file_changes_info = MarkdownFormatter.extract_strings(
+                        self.malinfo.dynamic_analysis.file_changes_info
+                        )
 
                 report_template = f.read()
                 report = report_template.format(malware_name=malware_name, author_name=author_name,
                                                 malware_source=malware_source,
                                                 malware_source_link=malware_source_link,
-                                                date=date, hashes=hashes, binary_info=binary_info,
+                                                date=date, magic_bytes_info=magic_bytes_info,
+                                                hashes=hashes, binary_info=binary_info,
                                                 virus_total_info=virus_total_info,
-                                                strings=strings)
-                ReportGenerator.write_report(report_name, report)
+                                                strings=strings, process_indicators=processes_info,
+                                                network_indicators=network_info, 
+                                                file_indicators=file_changes_info)
+
+                ReportGenerator.write_report(self.report_name, report)
         except FileNotFoundError as e:
             sys.stderr.write(
                 f"{ReportGenerator.REPORT_TEMPLATE} not found.\n{e}")

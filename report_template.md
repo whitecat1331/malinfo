@@ -16,6 +16,12 @@
 
 ##### Malware Info:
 
+###### Magic Bytes
+
+```
+{magic_bytes_info}
+```
+
 ###### Hashes:
 
 {hashes}

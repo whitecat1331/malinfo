@@ -9,10 +9,11 @@ from malinfo import *
 
 
 def static_analysis_test():
-    static_analysis = StaticAnalysis("hello_world")
-    ic(static_analysis.hash_info.info()) 
-    ic(static_analysis.string_info.info())
-    ic(static_analysis.binary_info.info())
+    static_analysis = StaticAnalysis("Malware.Calc.exe.malz")
+    ic(static_analysis.magic_byte_info)
+    ic(static_analysis.hash_info) 
+    ic(static_analysis.string_info)
+    ic(static_analysis.binary_info)
     ic(static_analysis.vt_info)
 
 
@@ -68,4 +69,4 @@ def dynamic_analysis_test():
     
 
 if __name__ == "__main__":
-    dynamic_analysis_test()
+    static_analysis_test()
