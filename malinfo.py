@@ -89,9 +89,9 @@ class StaticAnalysis:
     def __init__(self, malware_file, hash_type = "sha256"):
         self.malware_file = malware_file
         self.magic_byte_info = magic.from_file(self.malware_file)
+        self.header_info = str(lief.parse(malware_file))
         self.hash_info = StaticAnalysis.HashInfo(self.malware_file).info()
         self.string_info = StaticAnalysis.Strings(self.malware_file).info()
-        self.binary_info = StaticAnalysis.BinaryInfo(self.malware_file).info()
         self.vt_info = VirusTotalAPI.file_info(self.hash_info[hash_type])
 
     class Strings:
@@ -148,48 +148,10 @@ class StaticAnalysis:
         def __iter__(self):
             return self.dict_info
 
-
-    class BinaryInfo:
-
-        def __init__(self, malware_file):
-            self.lief_parsed = lief.parse(malware_file)
-            if self.lief_parsed:
-                self.header_info = self.lief_parsed.header
-                self.header_attr = [info for info in dir(self.header_info) if not info.startswith(
-                    "__") and not callable(getattr(self.header_info, info))]
-
-                # set os type
-                # self.set_os_type()
-                self.os_type = type(self.lief_parsed)
-
-                self.parse_info()
-            else:
-                self.header_info = []
-                self.header_attr = []
-                self.dict_info = {}
-                self.os_type = None
-
-        # convert lief object to dictionary using output
-
-        def parse_info(self):
-            self.dict_info = {}
-            # convert to dict
-            for i in range(len(self.header_attr)):
-                self.dict_info[self.header_attr[i]] = getattr(
-                    self.header_info, self.header_attr[i])
-            # remove empty information
-            self.dict_info = {key: val for key, val in self.dict_info.items() if not (
-                isinstance(val, set) and len(val) == 0)}
-
-        def info(self):
-            return self.dict_info
-
-        def __iter__(self):
-            return self.dict_info
-
 class DynamicAnalysis:
 
-    def __init__(self, duration, directories):
+    def __init__(self, duration, directories, static_analysis):
+        self.static_analysis = static_analysis
         process_pool_executor = ProcessPoolExecutor()
         # start listening
         listener = process_pool_executor.submit(self.listen, duration, directories)
@@ -209,6 +171,8 @@ class DynamicAnalysis:
     def execute_binary():
         from Tests.malinfo_test import malware_test
         malware_test()
+
+        
 
     class MonitorParser:
         LOGNAME = "Logs"
@@ -268,7 +232,7 @@ class MalInfo:
 
     def __init__(self, duration, directories):
         self.static_analysis = StaticAnalysis()
-        self.dynamic_analysis = DynamicAnalysis(duration, directories)
+        self.dynamic_analysis = DynamicAnalysis(duration, directories, self.static_analysis)
 
 
 
@@ -327,9 +291,9 @@ class ReportGenerator:
                 hashes = MarkdownFormatter.format_info_table(
                     self.malinfo.static_analysis.hash_info, "Hash", "Value"
                     )
-                binary_info = MarkdownFormatter.format_info_table(
-                    self.malinfo.static_analysis.binary_info, "Info", "Value"
-                    )
+
+                header_info = self.malinfo.static_analysis.header_info
+
                 virus_total_info = MarkdownFormatter.format_info_table(
                     self.malinfo.static_analysis.vt_info, "Info", "Value"
                     )
@@ -356,7 +320,7 @@ class ReportGenerator:
                                                 malware_source=malware_source,
                                                 malware_source_link=malware_source_link,
                                                 date=date, magic_bytes_info=magic_bytes_info,
-                                                hashes=hashes, binary_info=binary_info,
+                                                hashes=hashes, header_info=header_info,
                                                 virus_total_info=virus_total_info,
                                                 strings=strings, process_indicators=processes_info,
                                                 network_indicators=network_info, 

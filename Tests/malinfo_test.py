@@ -13,7 +13,7 @@ def static_analysis_test():
     ic(static_analysis.magic_byte_info)
     ic(static_analysis.hash_info) 
     ic(static_analysis.string_info)
-    ic(static_analysis.binary_info)
+    ic(static_analysis.header_info)
     ic(static_analysis.vt_info)
 
 

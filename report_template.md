@@ -26,9 +26,11 @@
 
 {hashes}
 
-###### Binary Info
+###### Header Info
 
-{binary_info}
+```
+{header_info}
+```
 
 ##### Virus Total
 
