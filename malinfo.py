@@ -176,7 +176,6 @@ class DynamicAnalysis:
         if "python" in magic_bytes_info and "executable" in magic_bytes_info:
             subprocess.run(["python", static_analysis.malware_file])
             
-
         # lief.ELF.Binary
         # lief.PE.Binary
 
@@ -235,7 +234,7 @@ class DynamicAnalysis:
 
 class MalInfo:
 
-    def __init__(self, duration, directories, output_file, malware_file):
+    def __init__(self, duration, directories, malware_file):
         self.static_analysis = StaticAnalysis(malware_file)
         self.dynamic_analysis = DynamicAnalysis(duration, directories, self.static_analysis)
 
