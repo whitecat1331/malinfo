@@ -13,6 +13,7 @@ import magic
 import traceback
 import subprocess
 import Monitor.monitor
+from platform import system
 from markdown_formatter import MarkdownFormatter
 from concurrent.futures import ProcessPoolExecutor
 from dotenv import load_dotenv
@@ -90,10 +91,12 @@ class StaticAnalysis:
     def __init__(self, malware_file, hash_type = "sha256"):
         self.malware_file = malware_file
         self.magic_bytes_info = magic.from_file(self.malware_file)
-        self.header_info = str(lief.parse(malware_file))
         self.hash_info = StaticAnalysis.HashInfo(self.malware_file).info()
         self.string_info = StaticAnalysis.Strings(self.malware_file).info()
         self.vt_info = VirusTotalAPI.file_info(self.hash_info[hash_type])
+        lief_parsed = lief.parse(malware_file)
+        self.header_info = str(lief_parsed)
+        self.os_type = type(lief_parsed)
 
     class Strings:
         def __init__(self, malware_file):
@@ -171,13 +174,27 @@ class DynamicAnalysis:
 
     @staticmethod
     def execute_binary(static_analysis):
-        # python
+        # Python
         magic_bytes_info = static_analysis.magic_bytes_info.lower()
         if "python" in magic_bytes_info and "executable" in magic_bytes_info:
             subprocess.run(["python", static_analysis.malware_file])
             
-        # lief.ELF.Binary
+        executable_name = static_analysis.malware_file
+        os_type = static_analysis.os_type
+        os_name = system().lower()
+        if os_name == "linux" and os_type == lief.ELF.Binary:
+            args = (f"./{executable_name}",)
+            popen = subprocess.Popen(args, stdout=subprocess.PIPE)
+            popen.wait()
+            output = popen.stdout.read()
+            print(output.decode('utf-8'))
+
         # lief.PE.Binary
+        if os_name == "windows" and os_type == lief.PE.Binary:
+            pass
+        # lief.MachO.Binary
+        if os_name == "darwin" and os_type == lief.MachO.Binary:
+            pass
 
         
 
