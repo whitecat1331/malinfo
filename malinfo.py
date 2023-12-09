@@ -174,28 +174,31 @@ class DynamicAnalysis:
 
     @staticmethod
     def execute_binary(static_analysis):
-        # Python
-        magic_bytes_info = static_analysis.magic_bytes_info.lower()
-        if "python" in magic_bytes_info and "executable" in magic_bytes_info:
-            subprocess.run(["python", static_analysis.malware_file])
-            
         executable_name = static_analysis.malware_file
         os_type = static_analysis.os_type
         os_name = system().lower()
+
+        # Python
+        magic_bytes_info = static_analysis.magic_bytes_info.lower()
+        if "python" in magic_bytes_info and "executable" in magic_bytes_info:
+            args = ("python", executable_name)
+            
+        # lief.ELF.Binary - a man of culture
         if os_name == "linux" and os_type == lief.ELF.Binary:
             args = (f"./{executable_name}",)
-            popen = subprocess.Popen(args, stdout=subprocess.PIPE)
-            popen.wait()
-            output = popen.stdout.read()
-            print(output.decode('utf-8'))
 
-        # lief.PE.Binary
+        # lief.PE.Binary - like seriously why?
         if os_name == "windows" and os_type == lief.PE.Binary:
-            pass
-        # lief.MachO.Binary
-        if os_name == "darwin" and os_type == lief.MachO.Binary:
-            pass
+            args = (f".\{executable_name}",)
 
+        # lief.MachO.Binary - I see you have money
+        if os_name == "darwin" and os_type == lief.MachO.Binary:
+            args = (f"./{executable_name}",)
+
+        popen = subprocess.Popen(args, stdout=subprocess.PIPE)
+        popen.wait()
+        output = popen.stdout.read()
+        print(output.decode('utf-8'))
         
 
     class MonitorParser:
@@ -266,15 +269,86 @@ class ReportGenerator:
             self.malware_link = malware_link
             self.date = datetime.now()
 
-    REPORT_TEMPLATE = os.path.join(os.path.dirname(
-        os.path.realpath(__file__)), "report_template.md")
+    REPORT_TEMPLATE = \
+"""
+<center><b>{malware_name}</b></center> <br>
+<center>{author_name}</center>           <br>
+<center>{malware_source}</center>                   <br>
+<center>{date}</center>           <br>
+
+---
+
+### <u>Malware Samples</u>
+
+[malware_source_link]({malware_source_link})
+<br>
+
+---
+
+### <u>Static Analysis</u>
+
+##### Malware Info:
+
+###### Magic Bytes
+
+```
+{magic_bytes_info}
+```
+
+###### Hashes:
+
+{hashes}
+
+###### Header Info
+
+```
+{header_info}
+```
+
+##### Virus Total
+
+{virus_total_info}
+
+###### Strings:
+
+Note: Links Defanged Using [Cyber Chef](https://gchq.github.io/CyberChef/)
+
+```
+{strings}
+```
+
+---
+
+### <u>Dynamic Analysis</u>
+
+##### Process Indicators:
+
+```
+{process_indicators}
+```
+
+##### Network Indicators:
+
+```
+{network_indicators}
+```
+
+##### File Indicators
+
+```
+{file_indicators}
+```
+
+---
+
+"""
 
 
     def __init__(self, monitor_duration, directories, output_file, malware_file):
         self.input = click.prompt
         self.print = click.echo
         self.malware_file = malware_file
-        self.malinfo = MalInfo(monitor_duration, directories)
+        self.malinfo = MalInfo(monitor_duration, directories, malware_file)
         self.report_name = output_file
         self.generate_report()
 
@@ -295,62 +369,55 @@ class ReportGenerator:
 
     def generate_report(self):
 
-        try:
-            with open(self.report_name) as f:
-                # Generic Report Info
-                report_info = self.get_report_info()
-                malware_name = report_info.malware_name
-                author_name = report_info.author_name
-                malware_source = report_info.malware_source
-                date = report_info.date
-                malware_source_link = report_info.malware_link
+        # Generic Report Info
+        report_info = self.get_report_info()
+        malware_name = report_info.malware_name
+        author_name = report_info.author_name
+        malware_source = report_info.malware_source
+        date = report_info.date
+        malware_source_link = report_info.malware_link
 
-                # Static Analysis Report Info
-                magic_bytes_info = self.malinfo.static_analysis.magic_bytes_info
+        # Static Analysis Report Info
+        magic_bytes_info = self.malinfo.static_analysis.magic_bytes_info
 
-                hashes = MarkdownFormatter.format_info_table(
-                    self.malinfo.static_analysis.hash_info, "Hash", "Value"
-                    )
+        hashes = MarkdownFormatter.format_info_table(
+            self.malinfo.static_analysis.hash_info, "Hash", "Value"
+            )
 
-                header_info = self.malinfo.static_analysis.header_info
+        header_info = self.malinfo.static_analysis.header_info
 
-                virus_total_info = MarkdownFormatter.format_info_table(
-                    self.malinfo.static_analysis.vt_info, "Info", "Value"
-                    )
+        virus_total_info = MarkdownFormatter.format_info_table(
+            self.malinfo.static_analysis.vt_info, "Info", "Value"
+            )
 
-                strings = MarkdownFormatter.extract_strings(
-                    self.malinfo.static_analysis.string_info
-                    )
+        strings = MarkdownFormatter.extract_strings(
+            self.malinfo.static_analysis.string_info
+            )
 
-                # Dynamic Analysis Report Info
-                processes_info = MarkdownFormatter.extract_strings(
-                    self.malinfo.dynamic_analysis.processes_info
-                    )
+        # Dynamic Analysis Report Info
+        processes_info = MarkdownFormatter.extract_strings(
+            self.malinfo.dynamic_analysis.processes_info
+            )
 
-                network_info = MarkdownFormatter.extract_strings(
-                        self.malinfo.dynamic_analysis.network_packet_info
-                        )
+        network_info = MarkdownFormatter.extract_strings(
+                self.malinfo.dynamic_analysis.network_packet_info
+                )
 
-                file_changes_info = MarkdownFormatter.extract_strings(
-                        self.malinfo.dynamic_analysis.file_changes_info
-                        )
+        file_changes_info = MarkdownFormatter.extract_strings(
+                self.malinfo.dynamic_analysis.file_changes_info
+                )
 
-                report_template = f.read()
-                report = report_template.format(malware_name=malware_name, author_name=author_name,
-                                                malware_source=malware_source,
-                                                malware_source_link=malware_source_link,
-                                                date=date, magic_bytes_info=magic_bytes_info,
-                                                hashes=hashes, header_info=header_info,
-                                                virus_total_info=virus_total_info,
-                                                strings=strings, process_indicators=processes_info,
-                                                network_indicators=network_info, 
-                                                file_indicators=file_changes_info)
+        report = ReportGenerator.REPORT_TEMPLATE.format(malware_name=malware_name, author_name=author_name,
+                                        malware_source=malware_source,
+                                        malware_source_link=malware_source_link,
+                                        date=date, magic_bytes_info=magic_bytes_info,
+                                        hashes=hashes, header_info=header_info,
+                                        virus_total_info=virus_total_info,
+                                        strings=strings, process_indicators=processes_info,
+                                        network_indicators=network_info, 
+                                        file_indicators=file_changes_info)
 
-                ReportGenerator.write_report(self.report_name, report)
-        except FileNotFoundError as e:
-            sys.stderr.write(
-                f"{ReportGenerator.REPORT_TEMPLATE} not found.\n{e}")
-            sys.exit(1)
+        ReportGenerator.write_report(self.report_name, report)
 
     @staticmethod
     def write_report(report_name, report):
