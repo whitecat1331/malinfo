@@ -12,6 +12,8 @@ import multiprocessing
 import magic 
 import traceback
 import subprocess
+import netifaces
+import dns.resolver
 import Monitor.monitor
 from platform import system
 from markdown_formatter import MarkdownFormatter
@@ -156,6 +158,9 @@ class DynamicAnalysis:
 
     def __init__(self, duration, directories, static_analysis):
         process_pool_executor = ProcessPoolExecutor()
+        # start responder
+        responder = multiprocessing.Process(target=DynamicAnalysis.execute_responder, args=(duration, ))
+        responder.start()
         # start listening
         listener = process_pool_executor.submit(DynamicAnalysis.listen, duration, directories)
         # detonate malware
@@ -163,6 +168,7 @@ class DynamicAnalysis:
         detonater.start()
         # parse results
         detonater.join()
+        responder.join()
         self.monitor_parser = listener.result()
         self.processes_info = self.monitor_parser.parse_processes()
         self.network_packet_info = self.monitor_parser.parse_network_packets()
@@ -199,6 +205,19 @@ class DynamicAnalysis:
         popen.wait()
         output = popen.stdout.read()
         print(output.decode('utf-8'))
+
+    @staticmethod
+    def execute_responder(duration, interface='lo'):
+        responder_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "Responder", "Responder.py")
+        ip = netifaces.ifaddresses(interface)[netifaces.AF_INET][0]['addr']
+        ip6 = netifaces.ifaddresses(interface)[netifaces.AF_INET6][0]['addr']
+        args = ("python", responder_path, "--interface=ALL", f"--ip={ip}", f"--externalip6={ip6}", f"--monitor_time={duration}")
+        popen = subprocess.Popen(args, stdout=subprocess.PIPE)
+        popen.wait()
+        output = popen.stdout.read()
+        print(output.decode('utf-8'))
+
+    
         
 
     class MonitorParser:
