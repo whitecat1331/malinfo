@@ -1,5 +1,5 @@
 # malinfo Description
-Python research report tool for suspected malware
+Python static and dynamic analysis tool.
 
 # Requirements
 * python3.11+
@@ -8,8 +8,18 @@ Python research report tool for suspected malware
 set environment variable VIRUS_TOTAL_API_KEY
 
 <u>Linux</u>
-
+```
 export VIRUS_TOTAL_API_KEY=YOUR_KEY
+```
+
+<u>Windows</u>
+```
+setx VIRUS_TOTAL_API_KEY YOUR_KEY
+```
+
+<b> OR </b>
+
+create a .env file and set VIRUS_TOTAL_API_KEY to YOUR_KEY
 
 
 # Manuel Installation
@@ -28,15 +38,25 @@ pip install --editable .
 
 malinfo --help
 
+# Usage
+
+```
+Usage: malinfo.py [OPTIONS] OUTPUT_FILE MALWARE_FILE
+
+Options:
+  -m, --monitor_duration FLOAT
+  -d, --directories TEXT
+  --help                        Show this message and exit.
+```
+
+
 # Current Features
 
-## <u>Static Analysis Reporting</u>
+## <u>Static Analysis Report</u>
 * Hash Information
 * Binary Information
 * Virus Total Information
 * Strings Information
-
-# Upcoming Features
 
 ## <u>Dynamic Analysis Report</u>
 * Start Proxy Servers

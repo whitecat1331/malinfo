@@ -450,10 +450,7 @@ Note: Links Defanged Using [Cyber Chef](https://gchq.github.io/CyberChef/)
 @click.argument("output_file", type=str)
 @click.argument("malware_file", type=str)
 def generate(monitor_duration, directories, output_file, malware_file):
-    ic(monitor_duration)
-    ic(directories)
-    ic(output_file)
-    ic(malware_file)
+    ReportGenerator(monitor_duration, directories, output_file, malware_file)
 
 if __name__ == "__main__":
     generate()
