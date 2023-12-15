@@ -11,7 +11,8 @@ CALCULATOR_BINARY = "Malware.Calc.exe.malz"
 MALICOUS_IDENTIFIERS = "identifiers.py"
 ELF_BINARY = "hello_world"
 
-TEST_FILE = os.path.join("Tests", MALICOUS_IDENTIFIERS)
+TEST_FILE = CALCULATOR_BINARY
+TEST_FILE = os.path.join("Tests", TEST_FILE)
 
 
 def static_analysis_test():
@@ -50,4 +51,4 @@ def test_report_generator():
     
 
 if __name__ == "__main__":
-    dynamic_analysis_test()
+    static_analysis_test()
