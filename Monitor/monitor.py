@@ -4,10 +4,7 @@ from concurrent.futures import ProcessPoolExecutor
 from scapy.all import sniff
 from icecream import ic
 
-if __name__ == "__main__":
-    import filewatch
-else:
-    import Monitor.filewatch as filewatch
+import Monitor.filewatch as filewatch
 
 def process_monitor(duration):
     start_time = time.time() 
@@ -16,7 +13,7 @@ def process_monitor(duration):
     processes = []
     while run_time < duration:
         procs = [p.info for p in psutil.process_iter(
-            ['pid', 'name', 'ppid', 'cwd', 'cmdline', 'connections', 'create_time', 'terminal', 'username', 'status'])]
+            ['pid', 'name', 'ppid', 'cwd', 'cmdline', 'connections', 'create_time', 'username', 'status'])]
 
         for info in procs:
             if info not in processes:

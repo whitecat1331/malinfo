@@ -2,10 +2,14 @@ import time
 import os
 import string
 import sys
+import ctypes
+import pyuac
 from queue import Queue
 from watchdog.observers import Observer
 from watchdog.events import PatternMatchingEventHandler
 from icecream import ic
+from pyuac import main_requires_admin
+
 
 network_packets = Queue()
 DEPTH_LIMIT = 0
@@ -23,6 +27,7 @@ def on_moved(event):
     network_packets.put({"source": event.src_path, "destination": event.dest_path, 
                         "status": "moved", "time": time.time()})
 
+@main_requires_admin
 def main(duration, specified_directories, depth_limit=DEPTH_LIMIT):
     patterns = ["*"]
     ignore_patterns = None
@@ -48,7 +53,7 @@ def main(duration, specified_directories, depth_limit=DEPTH_LIMIT):
             dirs[:] = [] # Don't recurse any deeper
 
     observers = []
-    
+    directories = []
     directories.extend(specified_directories)
     
     for directory in directories:
@@ -67,7 +72,7 @@ def main(duration, specified_directories, depth_limit=DEPTH_LIMIT):
     return list(network_packets.queue)
 
 if __name__ == "__main__":
-    main()
+    main(5, [])
 
 
 

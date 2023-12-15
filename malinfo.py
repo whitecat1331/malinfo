@@ -64,18 +64,17 @@ class VirusTotalAPI:
 
     @staticmethod
     def file_info(hashsum):
+        file = type('NoFileAnalytics', (), {})()
+        file.last_analysis_stats = {}
         try:
             api_key = VirusTotalAPI.get_vt_key()
             client = vt.Client(api_key)
             file = client.get_object(f"/files/{hashsum}")
+            client.close()
         except vt.error.APIError:
-            file = type('NoFileAnalytics', (), {})()
-            file.last_analysis_stats = {}
             print("No File Analytics")
         except Exception:
             traceback.print_exc
-        finally:
-            client.close()
         return file.last_analysis_stats
 
     staticmethod
@@ -159,8 +158,8 @@ class DynamicAnalysis:
     def __init__(self, duration, directories, static_analysis):
         process_pool_executor = ProcessPoolExecutor()
         # start responder
-        responder = multiprocessing.Process(target=DynamicAnalysis.execute_responder, args=(duration, ))
-        responder.start()
+        # responder = multiprocessing.Process(target=DynamicAnalysis.execute_responder, args=(duration, ))
+        # responder.start()
         # start listening
         listener = process_pool_executor.submit(DynamicAnalysis.listen, duration, directories)
         # detonate malware
@@ -168,7 +167,7 @@ class DynamicAnalysis:
         detonater.start()
         # parse results
         detonater.join()
-        responder.join()
+        # responder.join()
         self.monitor_parser = listener.result()
         self.processes_info = self.monitor_parser.parse_processes()
         self.network_packet_info = self.monitor_parser.parse_network_packets()
@@ -207,7 +206,7 @@ class DynamicAnalysis:
         print(output.decode('utf-8'))
 
     @staticmethod
-    def execute_responder(duration, interface='lo'):
+    def execute_responder(duration, interface=netifaces.interfaces()[0]):
         responder_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "Responder", "Responder.py")
         ip = netifaces.ifaddresses(interface)[netifaces.AF_INET][0]['addr']
         ip6 = netifaces.ifaddresses(interface)[netifaces.AF_INET6][0]['addr']
