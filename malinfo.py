@@ -59,23 +59,22 @@ class FileManager:
 class VirusTotalAPI:
     VT_KEY = "VIRUS_TOTAL_API_KEY"
 
-    def __init__():
-        pass
+    def __init__(self):
+        self.api_key = VirusTotalAPI.get_vt_key()
+        self.client = vt.Client(self.api_key)
 
-    @staticmethod
-    def file_info(hashsum):
-        file = type('NoFileAnalytics', (), {})()
-        file.last_analysis_stats = {}
+    def file_info(self, hashsum):
         try:
-            api_key = VirusTotalAPI.get_vt_key()
-            client = vt.Client(api_key)
-            file = client.get_object(f"/files/{hashsum}")
-            client.close()
-        except vt.error.APIError:
-            print("No File Analytics")
+            return self.client.get_object(f"/files/{hashsum}").last_analysis_stats
         except Exception:
             traceback.print_exc
-        return file.last_analysis_stats
+
+        return {}
+
+
+    def __del__(self):
+        self.client.close()
+
 
     staticmethod
     def get_vt_key():
@@ -94,7 +93,7 @@ class StaticAnalysis:
         self.magic_bytes_info = magic.from_file(self.malware_file)
         self.hash_info = StaticAnalysis.HashInfo(self.malware_file).info()
         self.string_info = StaticAnalysis.Strings(self.malware_file).info()
-        self.vt_info = VirusTotalAPI.file_info(self.hash_info[hash_type])
+        self.vt_info = VirusTotalAPI().file_info(self.hash_info[hash_type])
         lief_parsed = lief.parse(malware_file)
         self.header_info = str(lief_parsed)
         self.os_type = type(lief_parsed)
