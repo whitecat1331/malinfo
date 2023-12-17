@@ -4,3 +4,5 @@
 [submodule "Responder"]
 	path = Responder
 	url = https://github.com/lgandx/Responder.git
+[submodule "Responder/"]
+	url = git@github.com:whitecat1331/Responder-malinfo.git
