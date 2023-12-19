@@ -71,12 +71,11 @@ class VirusTotalAPI:
 
         return {}
 
-
     def __del__(self):
         self.client.close()
 
 
-    staticmethod
+    @staticmethod
     def get_vt_key():
         try:
             load_dotenv()
@@ -154,11 +153,11 @@ class StaticAnalysis:
 
 class DynamicAnalysis:
 
-    def __init__(self, duration, directories, static_analysis):
+    def __init__(self, duration, directories, static_analysis, interface):
         process_pool_executor = ProcessPoolExecutor()
         # start responder
-        # responder = multiprocessing.Process(target=DynamicAnalysis.execute_responder, args=(duration, ))
-        # responder.start()
+        responder = multiprocessing.Process(target=DynamicAnalysis.execute_responder, args=(duration, interface))
+        responder.start()
         # start listening
         listener = process_pool_executor.submit(DynamicAnalysis.listen, duration, directories)
         # detonate malware
@@ -166,7 +165,7 @@ class DynamicAnalysis:
         detonater.start()
         # parse results
         detonater.join()
-        # responder.join()
+        responder.join()
         self.monitor_parser = listener.result()
         self.processes_info = self.monitor_parser.parse_processes()
         self.network_packet_info = self.monitor_parser.parse_network_packets()
@@ -182,22 +181,22 @@ class DynamicAnalysis:
         os_type = static_analysis.os_type
         os_name = system().lower()
 
-        # Python
         magic_bytes_info = static_analysis.magic_bytes_info.lower()
         if "python" in magic_bytes_info and "executable" in magic_bytes_info:
             args = ("python", executable_name)
             
-        # lief.ELF.Binary - a man of culture
-        if os_name == "linux" and os_type == lief.ELF.Binary:
+        elif os_name == "linux" and os_type == lief.ELF.Binary:
             args = (f"./{executable_name}",)
 
-        # lief.PE.Binary - like seriously why?
-        if os_name == "windows" and os_type == lief.PE.Binary:
+        elif os_name == "windows" and os_type == lief.PE.Binary:
             args = (f".\{executable_name}",)
 
-        # lief.MachO.Binary - I see you have money
-        if os_name == "darwin" and os_type == lief.MachO.Binary:
+        elif os_name == "darwin" and os_type == lief.MachO.Binary:
             args = (f"./{executable_name}",)
+        
+        else:
+            print("Unable to execute file")
+            return
 
         popen = subprocess.Popen(args, stdout=subprocess.PIPE)
         popen.wait()
@@ -205,11 +204,9 @@ class DynamicAnalysis:
         print(output.decode('utf-8'))
 
     @staticmethod
-    def execute_responder(duration, interface=netifaces.interfaces()[0]):
+    def execute_responder(duration, interface):
         responder_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "Responder", "Responder.py")
-        ip = netifaces.ifaddresses(interface)[netifaces.AF_INET][0]['addr']
-        ip6 = netifaces.ifaddresses(interface)[netifaces.AF_INET6][0]['addr']
-        args = ("python", responder_path, "--interface=ALL", f"--ip={ip}", f"--externalip6={ip6}", f"--monitor_time={duration}")
+        args = ("python", responder_path, f"--interface={interface}", f"--monitor_time={duration}", "--DHCP-DNS", "--wpad")
         popen = subprocess.Popen(args, stdout=subprocess.PIPE)
         popen.wait()
         output = popen.stdout.read()
@@ -271,9 +268,9 @@ class DynamicAnalysis:
 
 class MalInfo:
 
-    def __init__(self, duration, directories, malware_file):
+    def __init__(self, duration, directories, malware_file, interface):
         self.static_analysis = StaticAnalysis(malware_file)
-        self.dynamic_analysis = DynamicAnalysis(duration, directories, self.static_analysis)
+        self.dynamic_analysis = DynamicAnalysis(duration, directories, self.static_analysis, interface)
 
 
 class ReportGenerator:
@@ -361,11 +358,11 @@ Note: Links Defanged Using [Cyber Chef](https://gchq.github.io/CyberChef/)
 """
 
 
-    def __init__(self, monitor_duration, directories, output_file, malware_file):
+    def __init__(self, monitor_duration, directories, output_file, malware_file, interface):
         self.input = click.prompt
         self.print = click.echo
         self.malware_file = malware_file
-        self.malinfo = MalInfo(monitor_duration, directories, malware_file)
+        self.malinfo = MalInfo(monitor_duration, directories, malware_file, interface)
         self.report_name = output_file
         self.generate_report()
 
@@ -445,9 +442,14 @@ Note: Links Defanged Using [Cyber Chef](https://gchq.github.io/CyberChef/)
 @click.command()
 @click.option("-m", "--monitor_duration", "monitor_duration", type=float)
 @click.option("-d", "--directories", "directories", type=str, multiple=True)
+@click.option("-i", "--interface", "interface", 
+              type=click.Choice(netifaces.interfaces()),
+              default=netifaces.interfaces()[0]
+            )
 @click.argument("output_file", type=str)
 @click.argument("malware_file", type=str)
-def generate(monitor_duration, directories, output_file, malware_file):
+def generate(monitor_duration, directories, interface, output_file, malware_file):
+    ic(interface)
     ReportGenerator(monitor_duration, directories, output_file, malware_file)
 
 if __name__ == "__main__":
