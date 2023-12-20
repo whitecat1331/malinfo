@@ -6,14 +6,14 @@ from icecream import ic
 import netifaces
 from malinfo import StaticAnalysis, DynamicAnalysis, MalInfo, ReportGenerator
 
-DURATION = 1
+DURATION = 10
 DIRECTORIES = []
 CALCULATOR_BINARY = "Malware.Calc.exe.malz"
 MALICOUS_IDENTIFIERS = "identifiers.py"
 ELF_BINARY = "hello_world"
 INTERFACE = netifaces.interfaces()[0]
 
-TEST_FILE = ELF_BINARY
+TEST_FILE = MALICOUS_IDENTIFIERS
 TEST_FILE = os.path.join("Tests", TEST_FILE)
 
 
@@ -53,4 +53,4 @@ def test_report_generator():
     
 
 if __name__ == "__main__":
-    dynamic_analysis_test()
+    test_report_generator()

@@ -158,6 +158,8 @@ class DynamicAnalysis:
         # start responder
         responder = multiprocessing.Process(target=DynamicAnalysis.execute_responder, args=(duration, interface))
         responder.start()
+        while socket.gethostbyname("whatsmydns.net") != netifaces.ifaddresses(interface)[2][0]["addr"]:
+            time.sleep(0.1)
         # start listening
         listener = process_pool_executor.submit(DynamicAnalysis.listen, duration, directories)
         # detonate malware
