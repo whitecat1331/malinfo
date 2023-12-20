@@ -56,7 +56,8 @@ Usage: malinfo.py [OPTIONS] OUTPUT_FILE MALWARE_FILE
 Options:
   -m, --monitor_duration FLOAT
   -d, --directories TEXT
-  --help                        Show this message and exit.
+  -i, --interface [lo|eno1|wlo1|vmnet1|vmnet8]
+  --help                          Show this message and exit.
 ```
 
 
