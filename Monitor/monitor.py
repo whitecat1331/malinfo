@@ -1,5 +1,6 @@
 import time
 import psutil
+import netifaces
 from concurrent.futures import ProcessPoolExecutor
 from scapy.all import sniff
 from icecream import ic
@@ -23,20 +24,20 @@ def process_monitor(duration):
 
     return {"process_monitor": processes}
 
-def network_monitor(duration):
-    network_packets = sniff(timeout=duration)
+def network_monitor(interface, duration):
+    network_packets = sniff(iface=interface, timeout=duration)
     return {"network_monitor": network_packets}
 
 def filesystem_monitor(duration, directories):
     return {"filesystem_monitor": filewatch.main(duration, directories)}
 
 
-def main(duration, directories):
+def main(interface, duration, directories):
     process_pool_executor = ProcessPoolExecutor()
     processes = []
     running_process = process_pool_executor.submit(process_monitor, duration)
     processes.append(running_process)
-    running_process = process_pool_executor.submit(network_monitor, duration)
+    running_process = process_pool_executor.submit(network_monitor, interface, duration)
     processes.append(running_process)
     running_process = process_pool_executor.submit(filesystem_monitor, duration, directories)
     processes.append(running_process)
@@ -49,8 +50,9 @@ def main(duration, directories):
 
     return all_monitor_results
 
+INTERFACE = netifaces.interfaces()[0]
 DURATION = 5
 DIRECTORIES = []
 
 if __name__ == "__main__":
-    main(DURATION, DIRECTORIES)
+    main(INTERFACE, DURATION, DIRECTORIES)

@@ -161,7 +161,7 @@ class DynamicAnalysis:
         while socket.gethostbyname("whatsmydns.net") != netifaces.ifaddresses(interface)[2][0]["addr"]:
             time.sleep(0.1)
         # start listening
-        listener = process_pool_executor.submit(DynamicAnalysis.listen, duration, directories)
+        listener = process_pool_executor.submit(DynamicAnalysis.listen, interface, duration, directories)
         # detonate malware
         detonater = multiprocessing.Process(target=DynamicAnalysis.execute_binary, args=(static_analysis, ))
         detonater.start()
@@ -174,8 +174,8 @@ class DynamicAnalysis:
         self.file_changes_info = self.monitor_parser.parse_file_changes()
 
     @staticmethod
-    def listen(duration, directories):
-        return DynamicAnalysis.MonitorParser(duration, directories)
+    def listen(interface, duration, directories):
+        return DynamicAnalysis.MonitorParser(interface, duration, directories)
 
     @staticmethod
     def execute_binary(static_analysis):
@@ -222,13 +222,13 @@ class DynamicAnalysis:
     class MonitorParser:
         LOGNAME = "Logs"
 
-        def __init__(self, duration, directories, detonation_time=time.time()):
+        def __init__(self, interface, duration, directories, detonation_time=time.time()):
             self.detonation_time = detonation_time
 
             if not os.path.exists(DynamicAnalysis.MonitorParser.LOGNAME):
                 os.makedirs(DynamicAnalysis.MonitorParser.LOGNAME)
 
-            self.monitor_info = Monitor.monitor.main(duration, directories)
+            self.monitor_info = Monitor.monitor.main(interface, duration, directories)
 
         def parse_processes(self, monitor_name="process_monitor"):
             raw_processes = self.monitor_info[monitor_name]
