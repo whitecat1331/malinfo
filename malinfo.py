@@ -154,14 +154,20 @@ class StaticAnalysis:
 class DynamicAnalysis:
 
     def __init__(self, duration, directories, static_analysis, interface):
+        # start listening
         process_pool_executor = ProcessPoolExecutor()
+        listener = process_pool_executor.submit(DynamicAnalysis.listen, interface, duration, directories)
         # start responder
         responder = multiprocessing.Process(target=DynamicAnalysis.execute_responder, args=(duration, interface))
         responder.start()
+        wait_time = 0
+        pause_time = 1.1
         while socket.gethostbyname("whatsmydns.net") != netifaces.ifaddresses(interface)[2][0]["addr"]:
-            time.sleep(0.1)
-        # start listening
-        listener = process_pool_executor.submit(DynamicAnalysis.listen, interface, duration, directories)
+            wait_time += pause_time
+            if wait_time > duration:
+                raise Exception("Nameserver not found: set host file to interface")
+            time.sleep(pause_time)
+
         # detonate malware
         detonater = multiprocessing.Process(target=DynamicAnalysis.execute_binary, args=(static_analysis, ))
         detonater.start()
@@ -209,7 +215,7 @@ class DynamicAnalysis:
     def execute_responder(duration, interface):
         os.chdir("Responder")
         responder_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "Responder", "Responder.py")
-        args = ("python", "Responder.py", f"--interface={interface}", f"--monitor_time={duration}", "--DHCP-DNS", "--wpad")
+        args = ("python", "Responder.py", f"--interface={interface}", f"--monitor_time={duration}", "--DHCP" ,"--DHCP-DNS", "--wpad")
         popen = subprocess.Popen(args, stdout=subprocess.PIPE)
         popen.wait()
         output = popen.stdout.read()
