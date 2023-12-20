@@ -4,10 +4,11 @@ import os, sys
 import socket
 from icecream import ic
 import netifaces
+import tempfile
 from malinfo import StaticAnalysis, DynamicAnalysis, MalInfo, ReportGenerator
 
 DURATION = 10
-DIRECTORIES = []
+DIRECTORIES = [tempfile.gettempdir()]
 CALCULATOR_BINARY = "Malware.Calc.exe.malz"
 MALICOUS_IDENTIFIERS = "identifiers.py"
 ELF_BINARY = "hello_world"
