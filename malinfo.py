@@ -157,11 +157,13 @@ class DynamicAnalysis:
         # start listening
         process_pool_executor = ProcessPoolExecutor()
         listener = process_pool_executor.submit(DynamicAnalysis.listen, interface, duration, directories)
+        while not listener.running():
+            time.sleep(0.1)
         # start responder
         responder = multiprocessing.Process(target=DynamicAnalysis.execute_responder, args=(duration, interface))
         responder.start()
         wait_time = 0
-        pause_time = 1.1
+        pause_time = 0.1
         while socket.gethostbyname("whatsmydns.net") != netifaces.ifaddresses(interface)[2][0]["addr"]:
             wait_time += pause_time
             if wait_time > duration:
