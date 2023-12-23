@@ -168,6 +168,7 @@ class DynamicAnalysis:
             wait_time += pause_time
             if wait_time > duration:
                 raise Exception("Nameserver not found: set host file to interface")
+                sys.exit(1)
             time.sleep(pause_time)
 
         # detonate malware
