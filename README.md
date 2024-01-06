@@ -60,6 +60,79 @@ Options:
   --help                          Show this message and exit.
 ```
 
+# Troubleshooting
+
+## Port 53 Already In Use
+
+Ubuntu based systems are already listening on port 53 by default. 
+If you want the DNS server for Responder to function correctly, you will need 
+to stop the systemd-resolver from using port 53.
+
+To see if port 53 is in use, run the command
+```
+sudo lsof -i :53
+```
+If there is any output, then the system is actively using port 53.
+
+To disable the systemd-resolver, you will need to override the default DNS server
+by editing the /etc/systemd/resolved.conf file.
+
+```
+sudo vim /etc/systemd/resolved.conf
+```
+
+You will need to uncomment the line with DNSStubListener and set it to no.
+This is what the file should look like after the appropriate changes are made.
+
+```
+[Resolve]
+#DNS=
+#FallbackDNS=
+#Domains=
+#LLMNR=no
+#MulticastDNS=no
+#DNSSEC=no
+#DNSOverTLS=no
+#Cache=no
+DNSStubListener=no
+#ReadEtcHosts=yes
+```
+
+Next you will need restart the service
+
+```
+sudo systemctl restart systemd-resolved
+```
+
+The changes will be applied after reboot and port 53 should no longer be in use.
+
+To undo these changes, comment the DNSStubListener setting. 
+
+## Exception: Nameserver not found: set host file to interface
+
+This error means that the nameserver is not set to Responder's DNS server.
+
+### Linux 
+
+Edit the /etc/resolv.conf file, you will need root permission.
+
+```
+sudo vim /etc/resolv.conf
+```
+
+Change the nameserver to the interface you intend to use Responder on.
+
+Example:
+```
+nameserver 127.0.0.1
+```
+
+### Windows 
+
+https://www.lifewire.com/how-to-change-dns-servers-in-windows-2626242
+
+### OS X
+https://softwarekeep.com/help-center/how-to-change-dns-settings-on-a-mac
 
 # Current Features
 
@@ -73,4 +146,4 @@ Options:
 * Start Proxy Servers
 * Monitor Network Connections
 * Monitor New Processes 
-* Monitor File IO on the File System
+j* Monitor File IO on the File System
