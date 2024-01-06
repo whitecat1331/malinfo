@@ -17,8 +17,7 @@ def process_monitor(duration):
             ['pid', 'name', 'ppid', 'cwd', 'cmdline', 'connections', 'create_time', 'username', 'status'])]
 
         for info in procs:
-            if info not in processes:
-                processes.append(info)
+            processes.append(info)
 
         run_time = time.time() - start_time
 
