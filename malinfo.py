@@ -218,7 +218,7 @@ class DynamicAnalysis:
     def execute_responder(duration, interface):
         os.chdir("Responder")
         responder_path = os.path.join(os.path.dirname(os.path.realpath(__file__)), "Responder", "Responder.py")
-        args = ("python", "Responder.py", f"--interface={interface}", f"--monitor_time={duration}", "--DHCP" ,"--DHCP-DNS", "--wpad")
+        args = ("python", "Responder.py", f"--interface={interface}", f"--monitor_time={duration}", "--DHCP-DNS", "--wpad")
         popen = subprocess.Popen(args, stdout=subprocess.PIPE)
         popen.wait()
         output = popen.stdout.read()
