@@ -1,5 +1,7 @@
-python-magic-bin
 icecream
+python-magic
+pyuac
+pyasn1
 lief
 click
 vt-py

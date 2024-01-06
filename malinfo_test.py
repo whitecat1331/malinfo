@@ -11,10 +11,10 @@ DURATION = 10
 DIRECTORIES = [tempfile.gettempdir()]
 CALCULATOR_BINARY = "Malware.Calc.exe.malz"
 MALICOUS_IDENTIFIERS = "identifiers.py"
-ELF_BINARY = "hello_world"
+ELF_BINARY = "sleep"
 INTERFACE = netifaces.interfaces()[0]
 
-TEST_FILE = MALICOUS_IDENTIFIERS
+TEST_FILE = ELF_BINARY
 TEST_FILE = os.path.join("Tests", TEST_FILE)
 
 
