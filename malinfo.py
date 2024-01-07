@@ -232,12 +232,11 @@ class DynamicAnalysis:
     class MonitorParser:
         LOGNAME = "Logs"
 
+        if not os.path.exists(LOGNAME):
+            os.makedirs(LOGNAME)
+
         def __init__(self, interface, duration, directories, detonation_time=time.time()):
             self.detonation_time = detonation_time
-
-            if not os.path.exists(DynamicAnalysis.MonitorParser.LOGNAME):
-                os.makedirs(DynamicAnalysis.MonitorParser.LOGNAME)
-
             self.monitor_info = Monitor.monitor.main(interface, duration, directories)
 
         def parse_processes(self, monitor_name="process_monitor"):
