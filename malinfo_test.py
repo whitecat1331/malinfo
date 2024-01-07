@@ -54,4 +54,4 @@ def test_report_generator():
     
 
 if __name__ == "__main__":
-    dynamic_analysis_test()
+    test_report_generator()

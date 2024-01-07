@@ -8,8 +8,7 @@ a file is malicious or not. The first part of the program will perform various s
 The program will then perform dynamic andlysis on the file to determine and log new processes, network connections, and file changes in specified directories. 
 All of the results will be compiled into a markdown report. 
 
-This repo is licence is under GPL-3. This means that anyone can copy, distribute, and basically do whatever you want with the code in the repo. 
-I spent a lot of time and effort in this project and the only thing I ask if you use this project is to mention whitecat1331 as the author. 
+This project is licensed is under GPL-3. This means that anyone can copy, distribute, and modify any of the code written in this repository.
 
 # Requirements
 * python3.11+
@@ -146,4 +145,4 @@ https://softwarekeep.com/help-center/how-to-change-dns-settings-on-a-mac
 * Start Proxy Servers
 * Monitor Network Connections
 * Monitor New Processes 
-j* Monitor File IO on the File System
+* Monitor File IO on the File System
