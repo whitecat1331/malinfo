@@ -1,3 +1,6 @@
 [submodule "ICMPack"]
 	path = ICMPack
 	url = git@github.com:whitecat1331/malinfo.git
+[submodule "Responder"]
+	path = Responder
+	url = git@github.com:whitecat1331/Responder-malinfo.git
