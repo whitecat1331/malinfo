@@ -51,11 +51,17 @@ git clone --recurse-submodules https://github.com/whitecat1331/malinfo.git
 cd malinfo
 
 pip install .
+
+malinfo --help
 ```
 
 <b>or if developing</b>
 
 ```
+git clone --recurse-submodules https://github.com/whitecat1331/malinfo.git
+
+cd malinfo
+
 pip install --editable .
 
 malinfo --help
