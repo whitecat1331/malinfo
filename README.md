@@ -33,19 +33,33 @@ create a .env file and set VIRUS_TOTAL_API_KEY to YOUR_KEY
 
 # Manuel Installation
 
+```
+git clone --recurse-submodules https://github.com/whitecat1331/malinfo.git
+
+cd malinfo
+
 pip install -r requirements.txt
 
 python malinfo.py --help
+```
 
 # Quick Installation
 
+```
+git clone --recurse-submodules https://github.com/whitecat1331/malinfo.git
+
+cd malinfo
+
 pip install .
+```
 
 <b>or if developing</b>
 
+```
 pip install --editable .
 
 malinfo --help
+```
 
 # Usage
 
